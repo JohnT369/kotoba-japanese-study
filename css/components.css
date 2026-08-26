@@ -3219,3 +3219,67 @@ body.is-edit-mode {
 .voice-dialogue__status { min-height: 22px; margin-top: 8px; color: var(--color-text-secondary); font-size: 12px; }
 .voice-dialogue__followup { margin-top: 14px; background: #f6ebe5; }
 .voice-dialogue__followup > span { color: var(--color-red); }
+
+/* ---------- Kana Lab 2.0 ---------- */
+.kana-lab { gap: 18px; }
+.kana-lab__heading,
+.kana-session__topline { display: flex; align-items: end; justify-content: space-between; gap: 20px; }
+.kana-lab__heading .section-title,
+.kana-session__topline .section-title { margin-top: 4px; }
+.kana-mode-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.kana-mode-card { display: grid; grid-template-columns: 40px 1fr; align-items: center; column-gap: 12px; min-height: 92px; padding: 16px; border: 1px solid var(--color-border); border-radius: 17px; background: rgba(255,255,255,.72); text-align: left; }
+.kana-mode-card > span { display: grid; grid-row: span 2; place-items: center; width: 40px; height: 40px; border-radius: 12px; color: var(--color-accent); background: var(--color-accent-soft); font-family: Georgia, "Yu Mincho", serif; font-size: 19px; font-weight: 700; }
+.kana-mode-card:nth-child(2) > span { font-family: inherit; font-size: 14px; }
+.kana-mode-card:nth-child(3) > span, .kana-mode-card:nth-child(5) > span { color: var(--color-red); background: var(--color-red-soft); }
+.kana-mode-card:nth-child(4) > span, .kana-mode-card:nth-child(6) > span { color: #557743; background: #e7f0e1; font-family: inherit; font-size: 16px; }
+.kana-mode-card strong { font-size: 14px; }
+.kana-mode-card small { color: var(--color-text-secondary); font-size: 11px; line-height: 1.35; }
+.kana-mode-card:hover { transform: translateY(-2px); border-color: #b7c9ca; box-shadow: var(--shadow-sm); }
+.kana-mode-card.is-active { border-color: var(--color-accent); background: #f7fbfa; box-shadow: inset 0 0 0 1px var(--color-accent); }
+.kana-session { gap: 18px; }
+.kana-session__stats { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; color: var(--color-text-secondary); font-size: 12px; }
+.kana-session__stats span { padding: 5px 8px; border-radius: 99px; background: #e9efec; }
+.kana-session__stats strong { color: var(--color-accent); font-variant-numeric: tabular-nums; }
+.kana-practice-card { position: relative; display: grid; place-items: center; min-height: 220px; padding: 28px; overflow: hidden; border: 1px solid #d8e2df; border-radius: 24px; background: radial-gradient(circle at 82% 0%, #edf4f1 0, transparent 11rem), #fff; text-align: center; }
+.kana-practice-card::after { content: "かな"; position: absolute; right: 22px; bottom: 6px; color: rgba(40,75,99,.055); font-family: Georgia, serif; font-size: 72px; }
+.kana-practice-card__instruction, .kana-practice-card__hint, .kana-practice-card__question { position: relative; z-index: 1; }
+.kana-practice-card__instruction { color: var(--color-red); font-size: 12px; font-weight: 750; letter-spacing: .08em; }
+.kana-practice-card__question { margin: 9px 0; color: var(--color-accent); font-family: Georgia, "Yu Mincho", serif; font-size: clamp(76px, 10vw, 118px); font-weight: 700; line-height: 1; }
+.kana-practice-card__hint { max-width: 430px; color: var(--color-text-secondary); font-size: 13px; }
+.kana-audio-button { position: absolute; z-index: 2; top: 18px; right: 18px; width: 42px; height: 42px; border: 1px solid #cbd9d6; border-radius: 13px; background: #fff; font-size: 17px; }
+.kana-audio-button:hover { border-color: var(--color-accent); background: var(--color-accent-soft); }
+.kana-practice-options { display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: 12px; }
+.kana-practice-option { min-height: 72px; padding: 10px; border: 1px solid var(--color-border-strong); border-radius: 15px; background: #fff; color: var(--color-text); font-size: 20px; font-weight: 720; }
+.kana-practice-option.is-kana { font-family: Georgia, "Yu Mincho", serif; font-size: 31px; }
+.kana-practice-option:hover:not(:disabled) { color: var(--color-accent); border-color: var(--color-accent); background: #f5faf9; transform: translateY(-2px); }
+.kana-practice-option.is-correct { color: var(--color-success); border-color: var(--color-success); background: var(--color-success-bg); }
+.kana-practice-option.is-wrong { color: var(--color-error); border-color: var(--color-error); background: var(--color-error-bg); }
+.kana-practice-feedback { min-height: 26px; color: var(--color-text-secondary); font-size: 14px; text-align: center; }
+.kana-practice-feedback.is-correct { color: var(--color-success); }
+.kana-practice-feedback.is-wrong { color: var(--color-error); }
+.kana-progress { padding: 26px; border-radius: 24px; background: #edf1ed; }
+.kana-mastery-grid { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 10px; }
+.kana-mastery-card { display: flex; flex-direction: column; min-height: 108px; padding: 15px; border: 1px solid #dbe2dd; border-radius: 15px; background: rgba(255,255,255,.75); }
+.kana-mastery-card span { color: var(--color-text-secondary); font-size: 11px; }
+.kana-mastery-card strong { margin-top: auto; color: var(--color-accent); font-size: 25px; font-variant-numeric: tabular-nums; }
+.kana-mastery-card small { color: var(--color-text-secondary); font-size: 11px; }
+.kana-weak-panel { display: flex; align-items: center; justify-content: space-between; gap: 18px; padding: 17px 18px; border-radius: 16px; background: #fff; }
+.kana-weak-panel__eyebrow { margin-bottom: 5px; color: var(--color-red); font-size: 11px; font-weight: 750; letter-spacing: .08em; }
+.kana-weak-panel p:last-child { color: var(--color-text-secondary); font-size: 13px; }
+.kana-weak-list { display: flex; flex-wrap: wrap; gap: 7px; }
+.kana-weak-list span { display: inline-flex; align-items: baseline; gap: 4px; padding: 5px 9px; border-radius: 9px; background: var(--color-red-soft); color: #8d4438; font-size: 12px; }
+.kana-weak-list strong { font-family: Georgia, "Yu Mincho", serif; font-size: 18px; }
+
+@media (max-width: 800px) {
+  .kana-mode-grid { grid-template-columns: repeat(2, minmax(0,1fr)); }
+  .kana-practice-options { grid-template-columns: repeat(2, minmax(0,1fr)); }
+  .kana-mastery-grid { grid-template-columns: repeat(2, minmax(0,1fr)); }
+}
+@media (max-width: 560px) {
+  .kana-lab__heading, .kana-session__topline, .kana-weak-panel { align-items: flex-start; flex-direction: column; }
+  .kana-session__stats { justify-content: flex-start; }
+  .kana-mode-grid { grid-template-columns: 1fr; }
+  .kana-practice-card { min-height: 190px; }
+  .kana-practice-card__question { font-size: 78px; }
+  .kana-mastery-grid { grid-template-columns: 1fr 1fr; }
+}

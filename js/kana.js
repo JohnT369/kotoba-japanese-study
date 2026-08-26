@@ -90,6 +90,7 @@
 
   const TYPE_LABEL = { hiragana: '平假名', katakana: '片假名' };
   const GROUP_LABEL = { seion: '清音', dakuon: '浊音·半浊音', youon: '拗音' };
+  window.KANA_TRAINING_DATA = DATA;
 
   // ---------- LocalStorage ----------
   const LS_KEY = 'jp_kana_stats_v1';
@@ -384,9 +385,7 @@
 
   // ---------- 初始化 ----------
   function init() {
-    bindControls();
-    switchMode();
-    renderStatsGrid();
+    // 旧版两态测试已由下方的多模式训练工作台替代；保留数据定义以兼容既有页面引用。
   }
 
   if (document.readyState === 'loading') {
@@ -394,4 +393,187 @@
   } else {
     init();
   }
+})();
+
+/* ============================================================
+   Kana Lab 2.0 — 多路径训练、错题回流与掌握地图
+   ============================================================ */
+(function () {
+  'use strict';
+
+  const DATA = window.KANA_TRAINING_DATA || {};
+  const STORAGE_KEY = 'jp_kana_training_v2';
+  const LEGACY_KEY = 'jp_kana_stats_v1';
+  const TYPE_LABEL = { hiragana: '平假名', katakana: '片假名' };
+  const GROUP_LABEL = { seion: '清音', dakuon: '浊音·半浊音', youon: '拗音' };
+  const MODE_META = {
+    recognize: { eyebrow: 'RECOGNITION · 看字识音', title: '看假名，选出正确读音', note: '先在心里读一遍，再确认答案。', instruction: '请选择正确的罗马音' },
+    reverse: { eyebrow: 'REVERSE · 反向拼写', title: '看读音，找出对应假名', note: '把声音和字形重新连起来。', instruction: '请选择正确的假名' },
+    listen: { eyebrow: 'LISTENING · 听音辨字', title: '听发音，选出对应假名', note: '可以重复播放，不要只凭字形猜。', instruction: '先播放声音，再选择假名' },
+    confuse: { eyebrow: 'DISCRIMINATION · 易混淆辨别', title: '把相似字形分清楚', note: '专门处理容易看错的假名。', instruction: '请选择正确的读音' },
+    review: { eyebrow: 'REVIEW · 错题复习', title: '回到最需要巩固的假名', note: '优先抽取你答错过或正确率偏低的假名。', instruction: '请选择正确答案' }
+  };
+  const CONFUSIONS = {
+    'あ': ['お', 'ぬ', 'め'], 'お': ['あ', 'す', 'ぬ'], 'き': ['さ', 'ち', 'そ'], 'さ': ['き', 'ち', 'る'], 'ち': ['さ', 'き', 'ら'],
+    'ぬ': ['め', 'ね', 'お'], 'め': ['ぬ', 'ね', 'わ'], 'ね': ['れ', 'め', 'ぬ'], 'れ': ['わ', 'ね', 'る'], 'わ': ['れ', 'ね', 'め'],
+    'る': ['ろ', 'ろ', 'ろ'], 'ろ': ['る', 'る', 'る'], 'シ': ['ツ', 'ソ', 'ン'], 'ツ': ['シ', 'ソ', 'ン'], 'ソ': ['ン', 'シ', 'ツ'],
+    'ン': ['ソ', 'シ', 'ツ'], 'ク': ['ケ', 'タ', 'ワ'], 'ケ': ['ク', 'タ', 'ワ'], 'ス': ['ヌ', 'フ', 'ワ'], 'ヌ': ['ス', 'フ', 'ワ'],
+    'フ': ['ワ', 'ヌ', 'ス'], 'ワ': ['フ', 'ク', 'ケ']
+  };
+
+  const state = { type: 'hiragana', group: 'seion', mode: 'recognize' };
+  const session = { round: 0, correct: 0, wrong: 0, answered: false, target: null, options: [], mode: 'recognize' };
+
+  function readJSON(key, fallback) {
+    try { const value = JSON.parse(localStorage.getItem(key) || ''); return value && typeof value === 'object' ? value : fallback; } catch (e) { return fallback; }
+  }
+  function loadStore() {
+    const saved = readJSON(STORAGE_KEY, null);
+    if (saved && saved.scopes && saved.characters) return saved;
+    const legacy = readJSON(LEGACY_KEY, {});
+    return { scopes: legacy && typeof legacy === 'object' ? legacy : {}, characters: {} };
+  }
+  function saveStore(store) { try { localStorage.setItem(STORAGE_KEY, JSON.stringify(store)); return true; } catch (e) { return false; } }
+  function scopeKey() { return state.type + ':' + state.group; }
+  function charKey(item) { return state.type + ':' + state.group + ':' + item.kana; }
+  function currentSet() { return (DATA[state.type] && DATA[state.type][state.group]) || []; }
+  function labelScope() { return TYPE_LABEL[state.type] + ' · ' + GROUP_LABEL[state.group]; }
+  function escapeHTML(value) { return String(value == null ? '' : value).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&quot;').replace(/'/g, '&#39;'); }
+  function shuffle(items) { const copy = items.slice(); for (let i = copy.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [copy[i], copy[j]] = [copy[j], copy[i]]; } return copy; }
+  function speak(text) { if (window.TTS && typeof window.TTS.speak === 'function') window.TTS.speak(text, { lang: 'ja-JP', rate: 0.84 }); }
+
+  function record(item, mode, correct) {
+    const store = loadStore();
+    const scope = scopeKey();
+    const key = charKey(item);
+    if (!store.scopes[scope]) store.scopes[scope] = { total: 0, correct: 0 };
+    if (!store.characters[key]) store.characters[key] = { kana: item.kana, romaji: item.romaji, total: 0, correct: 0, wrong: 0, modes: {}, lastSeen: '' };
+    const detail = store.characters[key];
+    store.scopes[scope].total += 1;
+    if (correct) store.scopes[scope].correct += 1;
+    detail.total += 1;
+    if (correct) detail.correct += 1; else detail.wrong += 1;
+    if (!detail.modes[mode]) detail.modes[mode] = { total: 0, correct: 0 };
+    detail.modes[mode].total += 1;
+    if (correct) detail.modes[mode].correct += 1;
+    detail.lastSeen = new Date().toISOString();
+    saveStore(store);
+  }
+
+  function weakItems(set) {
+    const chars = loadStore().characters || {};
+    return set.map(function (item) {
+      const stat = chars[charKey(item)] || { total: 0, correct: 0, wrong: 0 };
+      const rate = stat.total ? stat.correct / stat.total : 0;
+      return { item: item, stat: stat, score: stat.total ? (1 - rate) * 10 + Math.min(stat.wrong, 5) : -1 };
+    }).filter(function (entry) { return entry.stat.total && entry.stat.correct < entry.stat.total; }).sort(function (a, b) { return b.score - a.score; });
+  }
+  function pickTarget(set) {
+    const weak = weakItems(set);
+    if ((state.mode === 'review' || (weak.length && Math.random() < 0.42)) && weak.length) return weak[0].item;
+    const store = loadStore().characters || {};
+    const ordered = set.slice().sort(function (a, b) { return ((store[charKey(a)] || {}).total || 0) - ((store[charKey(b)] || {}).total || 0); });
+    return ordered[Math.floor(Math.random() * Math.min(ordered.length, 8))] || set[0];
+  }
+  function uniqueBy(items, key) { const seen = {}; return items.filter(function (item) { const value = item[key]; if (seen[value]) return false; seen[value] = true; return true; }); }
+  function optionsFor(target, set) {
+    let candidates;
+    if (state.mode === 'recognize' || state.mode === 'confuse' || state.mode === 'review') {
+      candidates = set.filter(function (item) { return item.romaji !== target.romaji; });
+      if (state.mode === 'confuse') {
+        const near = (CONFUSIONS[target.kana] || []).map(function (kana) { return set.find(function (item) { return item.kana === kana; }); }).filter(Boolean);
+        candidates = uniqueBy(near.concat(candidates), 'romaji').filter(function (item) { return item.romaji !== target.romaji; });
+      }
+      return shuffle([target].concat(shuffle(uniqueBy(candidates, 'romaji')).slice(0, 3)));
+    }
+    candidates = set.filter(function (item) { return item.kana !== target.kana; });
+    if (state.mode === 'confuse') {
+      const near = (CONFUSIONS[target.kana] || []).map(function (kana) { return set.find(function (item) { return item.kana === kana; }); }).filter(Boolean);
+      candidates = near.concat(candidates);
+    }
+    return shuffle([target].concat(shuffle(uniqueBy(candidates, 'kana')).slice(0, 3)));
+  }
+
+  function setText(id, value) { const element = document.getElementById(id); if (element) element.textContent = value; }
+  function renderSessionStats() {
+    setText('kanaRound', session.round);
+    setText('kanaCorrect', session.correct);
+    const total = session.correct + session.wrong;
+    setText('kanaRate', total ? Math.round(session.correct / total * 100) + '%' : '-');
+  }
+  function renderStudy() {
+    const title = document.getElementById('kanaStudyTitle');
+    const grid = document.getElementById('kanaGrid');
+    if (title) title.textContent = labelScope();
+    if (!grid) return;
+    grid.innerHTML = currentSet().map(function (item, index) { return '<button type="button" class="kana-card" data-kana-study-index="' + index + '"><div class="kana-card-inner"><div class="kana-face kana-front"><div class="kana-char">' + escapeHTML(item.kana) + '</div><div class="kana-hint">点击翻转</div></div><div class="kana-face kana-back"><div class="kana-romaji">' + escapeHTML(item.romaji) + '</div><div class="kana-char-small">' + escapeHTML(item.kana) + '</div><div class="kana-hint">再点一次朗读</div></div></div></button>'; }).join('');
+  }
+  function renderPractice() {
+    const meta = MODE_META[state.mode];
+    const practice = document.getElementById('kanaPracticeSection');
+    const study = document.getElementById('kanaStudySection');
+    if (state.mode === 'study') {
+      if (practice) practice.hidden = true;
+      if (study) study.hidden = false;
+      renderStudy();
+      return;
+    }
+    if (practice) practice.hidden = false;
+    if (study) study.hidden = true;
+    const set = currentSet();
+    if (!set.length) return;
+    session.mode = state.mode; session.target = pickTarget(set); session.options = optionsFor(session.target, set); session.answered = false; session.round += 1;
+    setText('kanaPracticeEyebrow', meta.eyebrow);
+    setText('kanaPracticeTitle', meta.title);
+    setText('kanaQuestionNote', meta.instruction);
+    setText('kanaQuestionHint', state.mode === 'review' && !weakItems(set).length ? '还没有错题，先完成几题建立自己的复习清单。' : meta.note);
+    const question = document.getElementById('kanaQuestion');
+    const replay = document.getElementById('btnKanaReplay');
+    if (question) question.textContent = state.mode === 'reverse' ? session.target.romaji : state.mode === 'listen' ? '？' : session.target.kana;
+    if (replay) replay.hidden = state.mode !== 'listen';
+    const options = document.getElementById('kanaPracticeOptions');
+    if (options) options.innerHTML = session.options.map(function (item, index) { const text = (state.mode === 'recognize' || state.mode === 'confuse' || state.mode === 'review') ? item.romaji : item.kana; return '<button type="button" class="kana-practice-option' + (state.mode === 'reverse' || state.mode === 'listen' ? ' is-kana' : '') + '" data-kana-option="' + index + '">' + escapeHTML(text) + '</button>'; }).join('');
+    setText('kanaPracticeFeedback', '');
+    const next = document.getElementById('btnKanaNext'); if (next) next.hidden = true;
+    renderSessionStats();
+    if (state.mode === 'listen') setTimeout(function () { speak(session.target.kana); }, 220);
+  }
+  function answer(index) {
+    if (session.answered) return;
+    session.answered = true;
+    const selected = session.options[index];
+    const correct = !!selected && selected.kana === session.target.kana;
+    if (correct) session.correct += 1; else session.wrong += 1;
+    record(session.target, state.mode, correct);
+    document.querySelectorAll('[data-kana-option]').forEach(function (button, optionIndex) { const item = session.options[optionIndex]; button.disabled = true; if (item.kana === session.target.kana) button.classList.add('is-correct'); else if (optionIndex === index) button.classList.add('is-wrong'); });
+    const feedback = document.getElementById('kanaPracticeFeedback');
+    if (feedback) { feedback.className = 'kana-practice-feedback ' + (correct ? 'is-correct' : 'is-wrong'); feedback.textContent = correct ? '答对了。' + session.target.kana + ' 读作 ' + session.target.romaji + '。' : '正确答案：' + session.target.kana + ' 读作 ' + session.target.romaji + '。下一轮会优先帮你再练。'; }
+    speak(session.target.kana);
+    const next = document.getElementById('btnKanaNext'); if (next) next.hidden = false;
+    renderSessionStats(); renderProgress();
+  }
+  function renderProgress() {
+    const store = loadStore();
+    const grid = document.getElementById('kanaStatsGrid');
+    const weakPanel = document.getElementById('kanaWeakPanel');
+    const keys = ['hiragana:seion', 'hiragana:dakuon', 'hiragana:youon', 'katakana:seion', 'katakana:dakuon', 'katakana:youon'];
+    if (grid) grid.innerHTML = keys.map(function (key) { const stat = store.scopes[key] || { total: 0, correct: 0 }; const parts = key.split(':'); const rate = stat.total ? Math.round(stat.correct / stat.total * 100) : null; return '<div class="kana-mastery-card"><span>' + TYPE_LABEL[parts[0]] + ' · ' + GROUP_LABEL[parts[1]] + '</span><strong>' + (rate === null ? '—' : rate + '%') + '</strong><small>' + stat.correct + ' / ' + stat.total + ' 正确</small></div>'; }).join('');
+    const weak = weakItems(currentSet()).slice(0, 6);
+    if (weakPanel) weakPanel.innerHTML = weak.length ? '<div><p class="kana-weak-panel__eyebrow">当前范围的薄弱假名</p><div class="kana-weak-list">' + weak.map(function (entry) { const rate = Math.round(entry.stat.correct / entry.stat.total * 100); return '<span><strong>' + escapeHTML(entry.item.kana) + '</strong>' + escapeHTML(entry.item.romaji) + ' · ' + rate + '%</span>'; }).join('') + '</div></div><button type="button" class="btn btn-primary btn-sm" data-kana-review-now>复习这些假名 →</button>' : '<div><p class="kana-weak-panel__eyebrow">当前范围的薄弱假名</p><p>完成几轮训练后，这里会自动出现需要复习的假名。</p></div>';
+  }
+  function renderScope() { setText('kanaScopeLabel', labelScope()); renderPractice(); renderProgress(); }
+  function setMode(mode) { state.mode = mode; session.round = 0; session.correct = 0; session.wrong = 0; document.querySelectorAll('[data-kana-mode]').forEach(function (button) { button.classList.toggle('is-active', button.getAttribute('data-kana-mode') === mode); }); renderPractice(); renderProgress(); }
+  function bind() {
+    document.querySelectorAll('[data-kana-type]').forEach(function (button) { button.addEventListener('click', function () { state.type = button.getAttribute('data-kana-type'); document.querySelectorAll('[data-kana-type]').forEach(function (item) { item.classList.toggle('is-active', item === button); }); renderScope(); }); });
+    document.querySelectorAll('[data-kana-group]').forEach(function (button) { button.addEventListener('click', function () { state.group = button.getAttribute('data-kana-group'); document.querySelectorAll('[data-kana-group]').forEach(function (item) { item.classList.toggle('is-active', item === button); }); renderScope(); }); });
+    document.querySelectorAll('[data-kana-mode]').forEach(function (button) { button.addEventListener('click', function () { setMode(button.getAttribute('data-kana-mode')); }); });
+    document.getElementById('kanaPracticeOptions').addEventListener('click', function (event) { const button = event.target.closest('[data-kana-option]'); if (button) answer(Number(button.getAttribute('data-kana-option'))); });
+    document.getElementById('btnKanaNext').addEventListener('click', renderPractice);
+    document.getElementById('btnKanaReplay').addEventListener('click', function () { if (session.target) speak(session.target.kana); });
+    document.getElementById('kanaGrid').addEventListener('click', function (event) { const card = event.target.closest('[data-kana-study-index]'); if (!card) return; const item = currentSet()[Number(card.getAttribute('data-kana-study-index'))]; if (card.classList.contains('is-flipped')) speak(item.kana); else card.classList.add('is-flipped'); });
+    document.getElementById('kanaWeakPanel').addEventListener('click', function (event) { if (event.target.closest('[data-kana-review-now]')) setMode('review'); });
+    document.getElementById('btnResetKanaStats').addEventListener('click', function () { if (!confirm('确定清除所有假名训练记录？')) return; localStorage.removeItem(STORAGE_KEY); localStorage.removeItem(LEGACY_KEY); session.round = 0; session.correct = 0; session.wrong = 0; renderPractice(); renderProgress(); });
+  }
+  function init() { bind(); renderScope(); }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init); else init();
 })();
