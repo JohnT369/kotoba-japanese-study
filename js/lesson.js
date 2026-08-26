@@ -581,29 +581,8 @@
   }
 
   function renderEditLessonHeader(lesson) {
-    const adj = App.getAdjacentLessons(lesson.id);
-    const prevHTML = adj.prev
-      ? '<a href="lesson.html?id=' + escapeHTML(adj.prev.id) + '" class="btn btn-outline btn-sm">← ' + escapeHTML(adj.prev.title) + '</a>'
-      : '<button class="btn btn-outline btn-sm" disabled>已是第一课</button>';
-    const nextHTML = adj.next
-      ? '<a href="lesson.html?id=' + escapeHTML(adj.next.id) + '" class="btn btn-outline btn-sm">' + escapeHTML(adj.next.title) + ' →</a>'
-      : '<button class="btn btn-outline btn-sm" disabled>暂无下一课</button>';
-
-    return (
-      '<div class="edit-meta-card">' +
-        '<div class="edit-list-row cols-2">' +
-          '<div class="field-group">' +
-            '<label>课程 ID</label>' +
-            '<div class="edit-id-value"><code>' + escapeHTML(lesson.id || '') + '</code><span>固定标识，不能在这里修改</span></div>' +
-          '</div>' +
-          '<div class="field-group">' +
-            '<label>课程名称</label>' +
-            '<div class="edit-id-value"><span>课程名称与副标题请在学习导航中编辑。</span><a class="btn btn-outline btn-sm" href="courses.html">前往学习导航</a></div>' +
-          '</div>' +
-        '</div>' +
-        '<div class="lesson-nav">' + prevHTML + nextHTML + '</div>' +
-      '</div>'
-    );
+    // 课程 ID、名称说明与上下课跳转不属于本课内容编辑，避免在编辑界面重复占用空间。
+    return '';
   }
 
   // 通用：可编辑列表的单行基础
