@@ -3201,3 +3201,21 @@ body.is-edit-mode {
   .quick-card { min-height:144px; }
   .course-catalog__hero { padding:24px; }
 }
+
+/* ---------- 语音应用会话 ---------- */
+.practice-card--voice { border-color: #cfddd9; background: linear-gradient(145deg, #fff, #f4f8f6); }
+.voice-dialogue__partner,
+.voice-dialogue__followup { position: relative; display: grid; gap: 4px; padding: 14px 48px 14px 15px; border-radius: 14px; background: #e8f0ef; }
+.voice-dialogue__partner > span,
+.voice-dialogue__followup > span { color: var(--color-accent); font-size: 11px; font-weight: 750; letter-spacing: .08em; }
+.voice-dialogue__partner strong,
+.voice-dialogue__followup strong { font-size: 17px; line-height: 1.45; }
+.voice-dialogue__partner small,
+.voice-dialogue__followup small { color: var(--color-text-secondary); font-size: 12px; }
+.voice-dialogue__partner .btn-play,
+.voice-dialogue__followup .btn-play { position: absolute; right: 12px; top: 50%; transform: translateY(-50%); }
+.voice-dialogue__target { display: flex; flex-wrap: wrap; align-items: center; gap: 7px; margin-top: 14px; color: var(--color-text-secondary); font-size: 13px; }
+.voice-dialogue__target span { padding: 2px 8px; border-radius: 99px; color: #a3483d; background: var(--color-red-soft); font-weight: 700; }
+.voice-dialogue__status { min-height: 22px; margin-top: 8px; color: var(--color-text-secondary); font-size: 12px; }
+.voice-dialogue__followup { margin-top: 14px; background: #f6ebe5; }
+.voice-dialogue__followup > span { color: var(--color-red); }

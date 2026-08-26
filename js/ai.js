@@ -23,8 +23,8 @@
     conversation:     { label: '对话练习',     desc: '进行更自然、连贯的场景化日语会话',   tier: 'strong', defaultModel: 'qwen-max' },
     translate:        { label: '日中互译',     desc: '日语与中文的准确互译',               tier: 'medium', defaultModel: 'qwen-plus' },
     kana_help:        { label: '假名/读音',    desc: '假名、读音、声调等快速问答',         tier: 'light',  defaultModel: 'qwen-flash' },
-    lesson_practice:  { label: '课程练习生成', desc: '按固定 JSON 结构生成三组课程练习',   tier: 'medium', defaultModel: 'qwen-plus' },
-    dialogue_assess:  { label: '会话达标评估', desc: '按本课情景评估日语回应的完成质量',     tier: 'medium', defaultModel: 'qwen-plus' }
+    lesson_practice:  { label: '课程练习生成', desc: '按本课内容与难度生成三组结构化练习',     tier: 'medium', defaultModel: 'qwen-plus' },
+    voice_dialogue:   { label: '语音会话陪练', desc: '理解语音转写并进行本课限定的会话反馈',      tier: 'strong', defaultModel: 'qwen-max' }
   };
 
   // ---------- 配置存取 ----------
@@ -40,7 +40,7 @@
       translate: 'qwen-plus',
       kana_help: 'qwen-flash',
       lesson_practice: 'qwen-plus',
-      dialogue_assess: 'qwen-plus'
+      voice_dialogue: 'qwen-max'
     }
   };
 
@@ -107,8 +107,8 @@
       conversation:     base + ' 当前任务：对话练习。扮演对话对象，回复一句日语（含读音），并附中文翻译。',
       translate:        base + ' 当前任务：翻译。请给出译文，必要时附读音或语法备注。',
       kana_help:        base + ' 当前任务：假名读音。请说明假名读音、声调，必要时给例词。',
-      lesson_practice:  base + ' 当前任务：生成课程练习。严格遵守用户给定的 JSON schema；只返回合法 JSON，不要 Markdown、解释文字或代码围栏。题目必须只使用用户提供的课程内容，答案和干扰项必须准确。',
-      dialogue_assess:  base + ' 当前任务：评估会话练习。严格遵守用户给定的 JSON schema；只返回合法 JSON，不要 Markdown、解释文字或代码围栏。仅按本课情景、指定表达和语言自然度评分。'
+      lesson_practice:  base + ' 当前任务：生成课程练习。严格遵守用户给定的 JSON schema；只返回合法 JSON，不要 Markdown、解释文字或代码围栏。题目必须严格限定在用户提供的本课词汇、句型、例句与会话内容内，答案和干扰项必须准确且难度匹配。',
+      voice_dialogue:   base + ' 当前任务：进行语音会话陪练。严格遵守用户给定的 JSON schema；只返回合法 JSON，不要 Markdown、解释文字或代码围栏。理解初学者语音转写时保持善意，但反馈、评分和下一句均只能依据本课情景与指定表达。'
     };
     return map[task] || base;
   }

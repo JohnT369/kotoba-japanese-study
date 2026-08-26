@@ -2,7 +2,7 @@
    practice.js - 固定课程练习、模块达标评估与 AI 评分
    单词短语：4 道选择题，至少答对 3 题达标
    学习目标：3 道填空题，至少答对 2 题达标
-   应用会话：2 个情景回应，AI 平均评分至少 70 分达标
+   应用会话：2 个语音对话回合，AI 平均评分至少 70 分达标
    ============================================================ */
 
 (function () {
@@ -10,7 +10,8 @@
 
   const CACHE_KEY = 'jp_lesson_practice_v1';
   const PROGRESS_KEY = 'jp_lesson_practice_progress_v1';
-  const SCHEMA_VERSION = 1;
+  // 升级提示词与会话 schema 后，自动淘汰旧的泛化练习缓存。
+  const SCHEMA_VERSION = 2;
 
   function escapeHTML(value) {
     return String(value == null ? '' : value).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
@@ -31,13 +32,14 @@
     const goals = Array.isArray(lesson.learningGoals) ? lesson.learningGoals : [];
     const dialogue = lesson.dialogue || {};
     return {
-      vocabulary: (lesson.vocabulary || []).map(function (item) { return { word: item.word || '', reading: item.reading || '', meaning: item.meaning || '' }; }),
-      phrases: (lesson.phrases || []).map(function (item) { return { phrase: item.phrase || '', reading: item.reading || '', meaning: item.meaning || '' }; }),
+      lesson: { title: lesson.title || '', subtitle: lesson.subtitle || '', unit: lesson.unit || '', tags: lesson.tags || [], sequence: lesson.sequence || '' },
+      vocabulary: (lesson.vocabulary || []).map(function (item) { return { word: item.word || '', reading: item.reading || '', meaning: item.meaning || '', type: item.type || '', accent: item.accent || '', note: item.note || '' }; }),
+      phrases: (lesson.phrases || []).map(function (item) { return { phrase: item.phrase || '', reading: item.reading || '', meaning: item.meaning || '', note: item.note || '' }; }),
       learningGoals: goals.map(function (goal) {
         const main = goal.mainExample || {};
-        return { title: goal.goalTitle || '', mainExample: { jp: main.jp || '', reading: main.reading || '', cn: main.cn || '' }, examples: (goal.examples || []).map(function (ex) { return { jp: ex.jp || '', reading: ex.reading || '', cn: ex.cn || '' }; }) };
+        return { title: goal.goalTitle || '', mainExample: { jp: main.jp || '', reading: main.reading || '', cn: main.cn || '', structure: main.structure || [] }, examples: (goal.examples || []).map(function (ex) { return { jp: ex.jp || '', reading: ex.reading || '', cn: ex.cn || '', focus: ex.focus || '', note: ex.note || '' }; }) };
       }),
-      dialogue: { title: dialogue.title || '', lines: (dialogue.lines || []).map(function (line) { return { speaker: line.speaker || '', jp: line.jp || '', cn: line.cn || '' }; }) }
+      dialogue: { title: dialogue.title || '', lines: (dialogue.lines || []).map(function (line) { return { speaker: line.speaker || '', speakerReading: line.speakerReading || '', jp: line.jp || '', cn: line.cn || '', annotations: line.annotations || [] }; }) }
     };
   }
 
@@ -75,8 +77,10 @@
     const checkedDialogue = [];
     for (let k = 0; k < dialogue.length; k++) {
       const item = dialogue[k] || {};
-      if (!isText(item.situation) || !isText(item.partnerLine) || !isText(item.instruction) || !isText(item.referenceAnswer)) return { ok: false, error: '第 ' + (k + 1) + ' 个会话练习格式不完整。' };
-      checkedDialogue.push({ situation: item.situation.trim(), partnerLine: item.partnerLine.trim(), instruction: item.instruction.trim(), referenceAnswer: item.referenceAnswer.trim(), referenceReading: isText(item.referenceReading) ? item.referenceReading.trim() : '', referenceCn: isText(item.referenceCn) ? item.referenceCn.trim() : '' });
+      if (!isText(item.situation) || !isText(item.partnerLine) || !isText(item.instruction) || !isText(item.referenceAnswer) || !isText(item.followUpLine)) return { ok: false, error: '第 ' + (k + 1) + ' 个语音会话练习格式不完整。' };
+      const required = Array.isArray(item.requiredExpressions) ? item.requiredExpressions.filter(isText).map(function (x) { return x.trim(); }) : [];
+      if (required.length < 1 || required.length > 2) return { ok: false, error: '第 ' + (k + 1) + ' 个语音会话必须指定 1–2 个本课表达。' };
+      checkedDialogue.push({ situation: item.situation.trim(), partnerLine: item.partnerLine.trim(), partnerReading: isText(item.partnerReading) ? item.partnerReading.trim() : '', instruction: item.instruction.trim(), requiredExpressions: required, referenceAnswer: item.referenceAnswer.trim(), referenceReading: isText(item.referenceReading) ? item.referenceReading.trim() : '', referenceCn: isText(item.referenceCn) ? item.referenceCn.trim() : '', followUpLine: item.followUpLine.trim(), followUpReading: isText(item.followUpReading) ? item.followUpReading.trim() : '', followUpCn: isText(item.followUpCn) ? item.followUpCn.trim() : '' });
     }
     return { ok: true, data: { vocabulary: { questions: checkedVocab }, goals: { questions: checkedGoals }, dialogue: { items: checkedDialogue } } };
   }
@@ -89,8 +93,17 @@
   }
 
   function buildPrompt(lesson) {
-    const schema = { vocabulary: { questions: [{ prompt: '题干', options: ['A', 'B', 'C', 'D'], answerIndex: 0, explain: '解析' }] }, goals: { questions: [{ prompt: '题干', sentenceTemplate: '日文 ___', answer: '答案', acceptedAnswers: ['答案'], hint: '提示', explain: '解析' }] }, dialogue: { items: [{ situation: '中文情景', partnerLine: '对方日文', instruction: '中文指令', referenceAnswer: '参考日文回应', referenceReading: '假名', referenceCn: '中文' }] } };
-    return ['根据下列课程内容生成固定练习，只使用给定词汇、短语、学习目标和会话语境。', '只返回一个合法 JSON 对象，禁止 Markdown、代码围栏和额外文字。', '固定数量：4 道选择题、3 道且仅有一个 ___ 的填空题、2 个会话回应题。', 'JSON schema：' + JSON.stringify(schema), '课程内容：' + JSON.stringify(sourcePayload(lesson))].join('\n\n');
+    const schema = { vocabulary: { questions: [{ prompt: '中文题干', options: ['选项A', '选项B', '选项C', '选项D'], answerIndex: 0, explain: '仅说明本课知识点' }] }, goals: { questions: [{ prompt: '中文指令', sentenceTemplate: '必须是本课原句，且只有 ___ 一个空', answer: '原句中的连续片段', acceptedAnswers: ['答案'], hint: '本课目标名称或中文提示', explain: '说明本课句型' }] }, dialogue: { items: [{ situation: '仅由本课会话改写的中文情景', partnerLine: '本课风格的对方日语', partnerReading: '假名读音', instruction: '中文口头回应任务', requiredExpressions: ['本课表达'], referenceAnswer: '只使用本课词汇和句型的日语回应', referenceReading: '假名读音', referenceCn: '中文', followUpLine: '对方的简短下一句', followUpReading: '假名读音', followUpCn: '中文' }] } };
+    return [
+      '你是严格遵循教材范围的日语初学者练习设计师。根据下列“唯一课程来源”生成练习，不允许凭常识补充未给出的词汇、语法、人物、地点或更高难度表达。',
+      '难度必须与课程来源完全等阶：若课程是入门句型，题目只能考察本课已有句型的识别、替换和一轮回应；不得出现敬语扩展、过去时、动词变形或本课未出现的句尾。',
+      '词汇与短语模块：固定 4 题，全部为四选一。正确项和 3 个干扰项都必须来自本课 vocabulary 或 phrases；同一题只考一个明确词义/读音/使用场景；选项语言形式必须一致；不要使用“以上都对”、否定陷阱或课外同义词。尽量覆盖词汇与短语，不能重复考同一项目。',
+      '学习目标模块：固定 3 题。每题对应不同 learningGoals；sentenceTemplate 必须逐字取自该目标的 mainExample 或 examples，只把一个连续的、可学习的片段替换成 ___；答案必须能在课程来源原文中找到；不得自行造句。',
+      '语音会话模块：固定 2 个回合。情景、对方台词、参考回应和下一句必须紧贴 dialogue.lines 的人物关系、语气与信息；每题 requiredExpressions 只列 1–2 个且必须来自本课词汇、短语、例句或会话。设计为学习者先听对方、再用日语口头回应；followUpLine 是学习者回应后可播放的简短收束句。',
+      '只返回一个合法 JSON 对象，禁止 Markdown、代码围栏和额外文字。固定数量：4 道选择题、3 道单空填空题、2 个语音会话回合。',
+      'JSON schema：' + JSON.stringify(schema),
+      '唯一课程来源：' + JSON.stringify(sourcePayload(lesson))
+    ].join('\n\n');
   }
 
   function practiceHash(record) { return record ? hashText(JSON.stringify(record.data)) : ''; }
@@ -171,14 +184,15 @@
     return items.map(function (item, index) {
       const saved = progress.dialogue[index];
       const assessed = saved && typeof saved.score === 'number';
-      return '<article class="practice-card"><div class="practice-card__number">会话题 ' + (index + 1) + ' / 2</div><p class="practice-situation">情景：' + escapeHTML(item.situation) + '</p><p class="practice-partner">对方：' + escapeHTML(item.partnerLine) + '</p><p class="practice-card__prompt">' + escapeHTML(item.instruction) + '</p><textarea data-practice-dialogue-input="' + index + '" placeholder="用日语写一句回应">' + escapeHTML(saved && saved.answer ? saved.answer : '') + '</textarea><div class="practice-dialogue-actions"><button type="button" class="btn btn-outline btn-sm" data-practice-reference="' + index + '">查看参考回应</button><button type="button" class="btn btn-primary btn-sm" data-practice-ai-check="' + index + '">AI 评估</button></div><div class="practice-reference" data-practice-reference-result="' + index + '" hidden></div><p class="practice-feedback' + (!assessed ? '' : saved.score >= 70 ? ' is-correct' : ' is-wrong') + '" data-practice-dialogue-feedback="' + index + '">' + (!assessed ? '' : 'AI 评分：' + saved.score + ' 分。' + escapeHTML(saved.feedback || '')) + '</p></article>';
+      const followUp = saved && saved.followUpLine ? '<div class="voice-dialogue__followup"><span>AI 对话收束</span><strong>' + escapeHTML(saved.followUpLine) + '</strong>' + (saved.followUpReading ? '<small>' + escapeHTML(saved.followUpReading) + '</small>' : '') + (saved.followUpCn ? '<small>' + escapeHTML(saved.followUpCn) + '</small>' : '') + '<button type="button" class="btn-play" data-practice-followup-play="' + index + '" title="播放 AI 下一句">🔊</button></div>' : '';
+      return '<article class="practice-card practice-card--voice"><div class="practice-card__number">语音会话 ' + (index + 1) + ' / 2</div><p class="practice-situation">情景：' + escapeHTML(item.situation) + '</p><div class="voice-dialogue__partner"><span>对方说</span><strong>' + escapeHTML(item.partnerLine) + '</strong>' + (item.partnerReading ? '<small>' + escapeHTML(item.partnerReading) + '</small>' : '') + '<button type="button" class="btn-play" data-practice-partner-play="' + index + '" title="播放对方台词">🔊</button></div><p class="practice-card__prompt">' + escapeHTML(item.instruction) + '</p><p class="voice-dialogue__target">本回合尽量用：' + item.requiredExpressions.map(function (expression) { return '<span>' + escapeHTML(expression) + '</span>'; }).join('') + '</p><textarea data-practice-dialogue-input="' + index + '" placeholder="点击“开始语音对话”后会在这里显示识别文本；也可以手动补充">' + escapeHTML(saved && saved.answer ? saved.answer : '') + '</textarea><p class="voice-dialogue__status" data-practice-voice-status="' + index + '">先听对方，再开口回应。</p><div class="practice-dialogue-actions"><button type="button" class="btn btn-primary btn-sm" data-practice-voice-start="' + index + '">🎙 开始语音对话</button><button type="button" class="btn btn-outline btn-sm" data-practice-reference="' + index + '">查看参考回应</button><button type="button" class="btn btn-outline btn-sm" data-practice-ai-check="' + index + '">AI 会话反馈</button></div><div class="practice-reference" data-practice-reference-result="' + index + '" hidden></div>' + followUp + '<p class="practice-feedback' + (!assessed ? '' : saved.score >= 70 ? ' is-correct' : ' is-wrong') + '" data-practice-dialogue-feedback="' + index + '">' + (!assessed ? '' : 'AI 会话评分：' + saved.score + ' 分。' + escapeHTML(saved.feedback || '')) + '</p></article>';
     }).join('');
   }
 
   const META = {
     vocabulary: { eyebrow: '模块一配套练习', title: '单词与短语练习', desc: '4 道选择题；完成后按正确率评估掌握程度。' },
     goals: { eyebrow: '模块二配套练习', title: '学习目标练习', desc: '3 道句型填空；完成后按正确率评估掌握程度。' },
-    dialogue: { eyebrow: '模块三配套练习', title: '应用会话练习', desc: '2 个情景回应；由 AI 按完成质量评分。' }
+    dialogue: { eyebrow: '模块三配套练习', title: '语音应用会话', desc: '听一句、说一句；由高质量会话模型按本课表达即时反馈。' }
   };
 
   function renderModule(lesson, moduleKey) {
@@ -223,14 +237,36 @@
     });
   }
 
-  function assessmentPrompt(item, answer) {
-    return ['评估学习者的日语会话回应。只返回 JSON，不要 Markdown 或额外文字。', '评分：回应情景 40 分，使用本课合适表达 35 分，日语自然与语法 25 分。', 'JSON schema：{"score":0到100的整数,"feedback":"不超过60字的中文改进建议"}', '情景：' + item.situation, '对方说：' + item.partnerLine, '作答要求：' + item.instruction, '参考回应：' + item.referenceAnswer, '学习者回应：' + answer].join('\n');
+  function speakJapanese(text) {
+    if (window.TTS && typeof window.TTS.speak === 'function') {
+      window.TTS.speak(text, { lang: 'ja-JP', rate: 0.86 });
+      return true;
+    }
+    return false;
+  }
+
+  function voiceDialoguePrompt(item, answer) {
+    return [
+      '你是本课专属的日语语音会话教练。学习者通过语音识别提交了回应；识别文本可能有轻微错别字，需结合本课内容善意判断，但不能把明显不同的表达视为正确。',
+      '仅按本回合评分：情景回应 40 分，requiredExpressions 的恰当使用 35 分，初学者范围内的自然度与语法 25 分。不得要求或奖励本课未出现的高阶表达。',
+      '若回应已基本完成任务，nextPartnerLine 必须原样返回给定的 followUpLine；若未完成，nextPartnerLine 返回空字符串。feedback 为不超过 60 字的中文建议，先肯定有效部分，再指出一个最关键的可改进点。',
+      '只返回 JSON，不要 Markdown 或额外文字。JSON schema：{"score":0到100的整数,"feedback":"中文建议","nextPartnerLine":"原样回传或空","nextPartnerReading":"原样回传或空","nextPartnerCn":"原样回传或空"}',
+      '情景：' + item.situation,
+      '对方说：' + item.partnerLine,
+      '本回合任务：' + item.instruction,
+      '本课必练表达：' + item.requiredExpressions.join('、'),
+      '参考回应：' + item.referenceAnswer,
+      '可播放的下一句：' + item.followUpLine,
+      '下一句读音：' + item.followUpReading,
+      '下一句中文：' + item.followUpCn,
+      '学习者语音识别文本：' + answer
+    ].join('\n');
   }
 
   function validateAssessment(raw) {
     const score = raw && Number(raw.score);
-    if (!Number.isFinite(score) || score < 0 || score > 100 || !isText(raw.feedback)) return { ok: false, error: 'AI 返回的评分格式不完整，请重试。' };
-    return { ok: true, data: { score: Math.round(score), feedback: raw.feedback.trim() } };
+    if (!Number.isFinite(score) || score < 0 || score > 100 || !isText(raw.feedback)) return { ok: false, error: 'AI 返回的会话反馈格式不完整，请重试。' };
+    return { ok: true, data: { score: Math.round(score), feedback: raw.feedback.trim(), nextPartnerLine: isText(raw.nextPartnerLine) ? raw.nextPartnerLine.trim() : '', nextPartnerReading: isText(raw.nextPartnerReading) ? raw.nextPartnerReading.trim() : '', nextPartnerCn: isText(raw.nextPartnerCn) ? raw.nextPartnerCn.trim() : '' } };
   }
 
   function bind(lesson) {
@@ -277,6 +313,51 @@
           result.hidden = false;
         });
       });
+      root.querySelectorAll('[data-practice-partner-play]').forEach(function (button) {
+        button.addEventListener('click', function () {
+          const index = Number(button.getAttribute('data-practice-partner-play'));
+          const item = record.data.dialogue.items[index];
+          if (item) speakJapanese(item.partnerLine);
+        });
+      });
+      root.querySelectorAll('[data-practice-followup-play]').forEach(function (button) {
+        button.addEventListener('click', function () {
+          const index = Number(button.getAttribute('data-practice-followup-play'));
+          const saved = getProgress(lesson, record).dialogue[index];
+          if (saved && saved.followUpLine) speakJapanese(saved.followUpLine);
+        });
+      });
+      root.querySelectorAll('[data-practice-voice-start]').forEach(function (button) {
+        button.addEventListener('click', function () {
+          const index = Number(button.getAttribute('data-practice-voice-start'));
+          const item = record.data.dialogue.items[index];
+          const input = root.querySelector('[data-practice-dialogue-input="' + index + '"]');
+          const status = root.querySelector('[data-practice-voice-status="' + index + '"]');
+          if (!item || !input) return;
+          speakJapanese(item.partnerLine);
+          const Recognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+          if (!Recognition) {
+            if (status) status.textContent = '当前浏览器不支持语音识别：已播放对方台词，请在下方输入回应后获取 AI 会话反馈。';
+            return;
+          }
+          const recognition = new Recognition();
+          recognition.lang = 'ja-JP';
+          recognition.continuous = false;
+          recognition.interimResults = true;
+          button.disabled = true;
+          button.textContent = '正在聆听…';
+          if (status) status.textContent = '请用日语回答；结束说话后会自动转写。';
+          recognition.onresult = function (event) {
+            let transcript = '';
+            for (let i = event.resultIndex; i < event.results.length; i++) transcript += event.results[i][0].transcript;
+            if (transcript) input.value = transcript.trim();
+            if (status && transcript) status.textContent = '已识别：' + transcript.trim() + '。确认后点击“AI 会话反馈”。';
+          };
+          recognition.onerror = function () { if (status) status.textContent = '没有识别到清晰语音，请再试一次或直接在下方补充文字。'; };
+          recognition.onend = function () { button.disabled = false; button.textContent = '🎙 开始语音对话'; };
+          try { recognition.start(); } catch (e) { button.disabled = false; button.textContent = '🎙 开始语音对话'; if (status) status.textContent = '语音识别暂时不可用，请直接输入回应。'; }
+        });
+      });
       root.querySelectorAll('[data-practice-ai-check]').forEach(function (button) {
         button.addEventListener('click', function () {
           const index = Number(button.getAttribute('data-practice-ai-check'));
@@ -287,11 +368,11 @@
           if (!item || !answer) { if (feedback) { feedback.textContent = '请先写下你的日语回应。'; feedback.className = 'practice-feedback is-wrong'; } return; }
           if (!window.AI || !window.AI.hasKey || !window.AI.hasKey()) { window.location.href = 'ai.html'; return; }
           button.disabled = true;
-          button.textContent = '评估中…';
-          window.AI.callJSON('dialogue_assess', assessmentPrompt(item, answer), { temperature: 0.2, maxTokens: 260 }).then(function (result) {
+          button.textContent = '对话分析中…';
+          window.AI.callJSON('voice_dialogue', voiceDialoguePrompt(item, answer), { temperature: 0.15, maxTokens: 320 }).then(function (result) {
             const checked = result.ok ? validateAssessment(result.data) : { ok: false, error: result.error };
-            if (!checked.ok) { if (feedback) { feedback.textContent = 'AI 评估失败：' + checked.error; feedback.className = 'practice-feedback is-wrong'; } button.disabled = false; button.textContent = 'AI 评估'; return; }
-            updateProgress(lesson, record, function (progress) { progress.dialogue[index] = { answer: answer, score: checked.data.score, feedback: checked.data.feedback }; });
+            if (!checked.ok) { if (feedback) { feedback.textContent = 'AI 会话反馈失败：' + checked.error; feedback.className = 'practice-feedback is-wrong'; } button.disabled = false; button.textContent = 'AI 会话反馈'; return; }
+            updateProgress(lesson, record, function (progress) { progress.dialogue[index] = { answer: answer, score: checked.data.score, feedback: checked.data.feedback, followUpLine: checked.data.nextPartnerLine, followUpReading: checked.data.nextPartnerReading, followUpCn: checked.data.nextPartnerCn }; });
             replaceAll(lesson);
           });
         });
