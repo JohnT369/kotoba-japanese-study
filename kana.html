@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>KOTOBA · 假名练习</title>
+  <link rel="stylesheet" href="css/global.css?v=2">
+  <link rel="stylesheet" href="css/components.css?v=2">
+</head>
+<body class="page-kana">
+  <div class="layout">
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-header">
+        <h1 class="logo">日本語</h1>
+        <p class="logo-sub">个人学习笔记</p>
+      </div>
+      <nav class="nav">
+        <a href="index.html" class="nav-item" data-page="home">
+          <span class="nav-icon">◉</span><span>学习工作台</span>
+        </a>
+        <a href="courses.html" class="nav-item" data-page="courses">
+          <span class="nav-icon">▤</span><span>课程路线</span>
+        </a>
+        <a href="kana.html" class="nav-item active" data-page="kana">
+          <span class="nav-icon">あ</span><span>假名练习</span>
+        </a>
+        <a href="ai.html" class="nav-item" data-page="ai">
+          <span class="nav-icon">✦</span><span>智能助学</span>
+        </a>
+        <a href="progress.html" class="nav-item" data-page="progress">
+          <span class="nav-icon">◷</span><span>学习足迹</span>
+        </a>
+      </nav>
+      <div class="sidebar-footer">
+        <p class="footer-text">每天一点日语<br>把表达变成习惯</p>
+      </div>
+    </aside>
+
+    <button class="menu-toggle" id="menuToggle" aria-label="菜单">
+      <span></span><span></span><span></span>
+    </button>
+
+    <main class="main">
+      <div class="content">
+        <section class="hero">
+          <p class="home-eyebrow">KANA LAB · 假名练习</p>
+          <h2 class="hero-title">先认得字，<br>再让声音留下来</h2>
+          <p class="hero-subtitle">翻卡熟悉读音，再用小测试把记忆变牢。</p>
+        </section>
+
+        <!-- 模式与类型切换 -->
+        <section class="section">
+          <div class="kana-controls">
+            <div class="seg" role="tablist" aria-label="假名类型">
+              <button class="seg-btn is-active" data-kana-type="hiragana" type="button">平假名</button>
+              <button class="seg-btn" data-kana-type="katakana" type="button">片假名</button>
+            </div>
+            <div class="seg" role="tablist" aria-label="分组">
+              <button class="seg-btn is-active" data-kana-group="seion" type="button">清音</button>
+              <button class="seg-btn" data-kana-group="dakuon" type="button">浊音·半浊音</button>
+              <button class="seg-btn" data-kana-group="youon" type="button">拗音</button>
+            </div>
+            <div class="seg" role="tablist" aria-label="模式">
+              <button class="seg-btn is-active" data-kana-mode="study" type="button">📚 学习</button>
+              <button class="seg-btn" data-kana-mode="quiz" type="button">✍ 测试</button>
+            </div>
+          </div>
+        </section>
+
+        <!-- 学习模式：假名网格 -->
+        <section class="section" id="kanaStudySection">
+          <h3 class="section-title" id="kanaStudyTitle">平假名 · 清音</h3>
+          <div class="kana-grid" id="kanaGrid"></div>
+          <p class="muted kana-tip">点击卡片翻转看罗马音，再点一次朗读该假名。</p>
+        </section>
+
+        <!-- 测试模式 -->
+        <section class="section" id="kanaQuizSection" hidden>
+          <h3 class="section-title">测试：看假名选罗马音</h3>
+          <div class="kana-quiz-stats">
+            <span>本轮：<strong id="quizRound">0</strong></span>
+            <span>正确：<strong id="quizCorrect">0</strong></span>
+            <span>错误：<strong id="quizWrong">0</strong></span>
+            <span>正确率：<strong id="quizRate">-</strong></span>
+          </div>
+          <div class="kana-quiz-card" id="kanaQuizCard"></div>
+          <div class="kana-quiz-options" id="kanaQuizOptions"></div>
+          <p class="muted kana-tip" id="quizFeedback"></p>
+          <button class="btn btn-primary" id="btnNextQuiz" type="button" hidden>下一题 →</button>
+        </section>
+
+        <!-- 历史正确率 -->
+        <section class="section">
+          <h3 class="section-title">训练记录</h3>
+          <div id="kanaStatsGrid" class="kana-stats-grid"></div>
+          <button class="btn btn-outline btn-sm" id="btnResetKanaStats" type="button">清除记录</button>
+        </section>
+      </div>
+    </main>
+  </div>
+
+  <script src="data/lessons.js"></script>
+  <script src="js/app.js"></script>
+  <script src="js/tts.js?v=3"></script>
+  <script src="js/kana.js"></script>
+</body>
+</html>

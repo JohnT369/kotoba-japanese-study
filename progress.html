@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>KOTOBA · 学习足迹</title>
+  <link rel="stylesheet" href="css/global.css?v=2">
+  <link rel="stylesheet" href="css/components.css?v=2">
+</head>
+<body class="page-progress">
+  <div class="layout">
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-header">
+        <h1 class="logo">日本語</h1>
+        <p class="logo-sub">个人学习笔记</p>
+      </div>
+      <nav class="nav">
+        <a href="index.html" class="nav-item" data-page="home">
+          <span class="nav-icon">◉</span>
+          <span>学习工作台</span>
+        </a>
+        <a href="courses.html" class="nav-item" data-page="courses">
+          <span class="nav-icon">▤</span>
+          <span>课程路线</span>
+        </a>
+        <a href="kana.html" class="nav-item" data-page="kana">
+          <span class="nav-icon">あ</span>
+          <span>假名练习</span>
+        </a>
+        <a href="ai.html" class="nav-item" data-page="ai">
+          <span class="nav-icon">✦</span>
+          <span>智能助学</span>
+        </a>
+        <a href="progress.html" class="nav-item active" data-page="progress">
+          <span class="nav-icon">◷</span>
+          <span>学习足迹</span>
+        </a>
+      </nav>
+      <div class="sidebar-footer">
+        <p class="footer-text">每天一点日语<br>把表达变成习惯</p>
+      </div>
+    </aside>
+
+    <button class="menu-toggle" id="menuToggle" aria-label="菜单">
+      <span></span>
+      <span></span>
+      <span></span>
+    </button>
+
+    <main class="main">
+      <div class="content">
+        <section class="hero">
+          <p class="home-eyebrow">LEARNING LOG · 学习足迹</p>
+          <h2 class="hero-title">回看走过的路，<br>也看见下一步</h2>
+          <p class="hero-subtitle">这里记录课程完成情况，帮你用清晰的节奏继续前进。</p>
+        </section>
+
+        <section class="section">
+          <div class="stats-grid" id="statsGrid">
+            <div class="stat-card">
+              <div class="stat-value" id="totalLessons">-</div>
+              <div class="stat-label">总课程数</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-value" id="completedLessons">-</div>
+              <div class="stat-label">已完成</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-value" id="remainingLessons">-</div>
+              <div class="stat-label">剩余</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-value" id="progressPercent">-</div>
+              <div class="stat-label">完成率</div>
+            </div>
+          </div>
+        </section>
+
+        <section class="section">
+          <h3 class="section-title">总体进度</h3>
+          <div class="progress-bar-wrap">
+            <div class="progress-bar">
+              <div class="progress-fill" id="overallProgress" style="width: 0%"></div>
+            </div>
+            <div class="progress-text" id="overallProgressText">0%</div>
+          </div>
+        </section>
+
+        <section class="section">
+          <h3 class="section-title">每课详情</h3>
+          <div id="lessonProgressList">
+            <p class="muted">正在加载...</p>
+          </div>
+        </section>
+
+        <section class="section">
+          <button class="btn btn-outline-danger" id="resetBtn" onclick="if(confirm('确定要清除所有学习进度吗？此操作不可恢复。')) App.resetProgress(); location.reload();">
+            清除全部进度
+          </button>
+        </section>
+      </div>
+    </main>
+  </div>
+
+  <script src="data/lessons.js"></script>
+  <script src="js/app.js"></script>
+  <script src="js/course-catalog.js"></script>
+  <script src="js/progress.js"></script>
+</body>
+</html>

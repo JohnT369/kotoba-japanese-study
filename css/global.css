@@ -1,0 +1,98 @@
+/* ============================================================
+   KOTOBA — 全站基础、布局与设计令牌
+   ============================================================ */
+
+:root {
+  --color-bg: #f7f6f1;
+  --color-bg-soft: #ffffff;
+  --color-bg-muted: #eeece4;
+  --color-surface: #ffffff;
+  --color-text: #182331;
+  --color-text-secondary: #5e6873;
+  --color-text-muted: #89929a;
+  --color-border: #e4e4dc;
+  --color-border-strong: #d1d4cf;
+  --color-accent: #284b63;
+  --color-accent-hover: #1b374a;
+  --color-accent-soft: #e5eef1;
+  --color-red: #c84c3c;
+  --color-red-soft: #f9e9e5;
+  --color-success: #2e7b61;
+  --color-success-bg: #e5f3eb;
+  --color-error: #b84336;
+  --color-error-bg: #fbe9e7;
+  --color-warn: #a56a1e;
+  --color-warn-bg: #f8f0dd;
+  --max-read: 1120px;
+  --sidebar-width: 272px;
+  --radius-sm: 10px;
+  --radius-md: 16px;
+  --radius-lg: 24px;
+  --radius-xl: 32px;
+  --shadow-sm: 0 1px 2px rgba(24, 35, 49, .03);
+  --shadow-md: 0 12px 32px rgba(24, 35, 49, .07);
+  --shadow-lg: 0 24px 60px rgba(24, 35, 49, .11);
+  --fs-xxs: 12px;
+  --fs-xs: 13px;
+  --fs-sm: 14px;
+  --fs-base: 16px;
+  --fs-md: 18px;
+  --fs-lg: 24px;
+  --fs-xl: 34px;
+  --fs-xxl: clamp(38px, 4vw, 58px);
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+  --space-7: 48px;
+  --space-8: 64px;
+  --transition: .22s cubic-bezier(.2,.75,.3,1);
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; -webkit-text-size-adjust: 100%; }
+body { min-width: 320px; font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Yu Gothic", "Noto Sans JP", "PingFang SC", "Microsoft YaHei", sans-serif; font-size: var(--fs-base); line-height: 1.65; color: var(--color-text); background: var(--color-bg); -webkit-font-smoothing: antialiased; }
+a { color: inherit; text-decoration: none; transition: color var(--transition), transform var(--transition), background var(--transition), border-color var(--transition); }
+button, input, textarea, select { font: inherit; }
+button { border: 0; background: none; cursor: pointer; color: inherit; }
+ul, ol { list-style: none; }
+h1, h2, h3, h4, h5, h6 { color: var(--color-text); font-weight: 720; line-height: 1.18; letter-spacing: -.025em; }
+::selection { background: #d9e7ea; }
+
+/* ---------- Application shell ---------- */
+.layout { min-height: 100vh; display: flex; background: radial-gradient(circle at 74% 2%, #fff 0, transparent 23rem), var(--color-bg); }
+.sidebar { display: flex; flex: 0 0 var(--sidebar-width); flex-direction: column; position: sticky; top: 0; z-index: 50; height: 100vh; padding: 30px 20px 22px; color: #eaf1f2; background: #1c3448; }
+.sidebar::after { content: ""; position: absolute; inset: auto 20px 18px; height: 1px; background: rgba(255,255,255,.12); }
+.sidebar-header { display: flex; align-items: center; gap: 12px; margin: 0 8px 44px; }
+.sidebar-header::before { content: "あ"; display: grid; place-items: center; width: 38px; height: 38px; border-radius: 13px; color: #1c3448; background: #f1d6c7; font-family: Georgia, "Yu Mincho", serif; font-size: 21px; font-weight: 700; }
+.logo { font-size: 21px; letter-spacing: .04em; color: #fff; }
+.logo-sub { margin-top: 1px; color: #adc0c9; font-size: 11px; letter-spacing: .08em; }
+.nav { display: flex; flex: 1; flex-direction: column; gap: 5px; }
+.nav-item { display: flex; align-items: center; gap: 13px; padding: 12px 13px; border: 1px solid transparent; border-radius: 12px; color: #c4d2d8; font-size: 14px; font-weight: 560; }
+.nav-item:hover { color: #fff; background: rgba(255,255,255,.075); }
+.nav-item.active { color: #1c3448; background: #fbfbf7; box-shadow: 0 5px 15px rgba(5,20,31,.12); }
+.nav-icon { display: inline-grid; place-items: center; width: 20px; color: currentColor; font-size: 16px; line-height: 1; }
+.sidebar-footer { margin: auto 8px 8px; padding-top: 22px; border-top: 1px solid rgba(255,255,255,.14); }
+.footer-text { color: #adc0c9; font-size: 12px; line-height: 1.85; }
+
+.main { flex: 1; min-width: 0; padding: 54px 56px 72px; }
+.content { display: flex; flex-direction: column; width: 100%; max-width: var(--max-read); margin: 0 auto; gap: 54px; }
+.hero { padding: 0 0 28px; border-bottom: 1px solid var(--color-border); }
+.hero-title { max-width: 720px; font-size: var(--fs-xl); }
+.hero-subtitle { max-width: 680px; margin-top: 11px; color: var(--color-text-secondary); font-size: var(--fs-md); }
+.section { display: flex; flex-direction: column; gap: 20px; }
+.section-title { display: flex; align-items: center; gap: 10px; font-size: 21px; }
+.section-title::before { content: ""; width: 8px; height: 8px; border-radius: 99px; background: var(--color-red); box-shadow: 0 0 0 5px var(--color-red-soft); }
+.muted { color: var(--color-text-muted); font-size: var(--fs-sm); }
+
+/* ---------- Responsive shell ---------- */
+.menu-toggle { display: none; position: fixed; top: 14px; left: 14px; z-index: 100; width: 44px; height: 44px; border: 1px solid var(--color-border); border-radius: 14px; background: rgba(255,255,255,.94); box-shadow: var(--shadow-md); flex-direction: column; align-items: center; justify-content: center; gap: 5px; }
+.menu-toggle span { display: block; width: 18px; height: 2px; border-radius: 9px; background: var(--color-text); transition: transform var(--transition), opacity var(--transition); }
+.menu-toggle.is-open span:nth-child(1) { transform: translateY(7px) rotate(45deg); }
+.menu-toggle.is-open span:nth-child(2) { opacity: 0; }
+.menu-toggle.is-open span:nth-child(3) { transform: translateY(-7px) rotate(-45deg); }
+
+@media (max-width: 980px) { .sidebar { position: fixed; width: 278px; transform: translateX(-100%); transition: transform .3s ease; box-shadow: var(--shadow-lg); } .sidebar.is-open { transform: translateX(0); } .menu-toggle { display: flex; } .main { padding: 84px 28px 52px; } }
+@media (max-width: 620px) { :root { --fs-xxl: 38px; } .main { padding: 82px 16px 44px; } .content { gap: 42px; } .hero-title { font-size: 32px; } .hero-subtitle { font-size: 16px; } .section { gap: 16px; } }

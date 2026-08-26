@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>KOTOBA · 学习工作台</title>
+  <link rel="stylesheet" href="css/global.css?v=2">
+  <link rel="stylesheet" href="css/components.css?v=2">
+</head>
+<body class="page-home">
+  <div class="layout">
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-header">
+        <h1 class="logo">日本語</h1>
+        <p class="logo-sub">个人学习笔记</p>
+      </div>
+      <nav class="nav">
+        <a href="index.html" class="nav-item active" data-page="home">
+          <span class="nav-icon">◉</span>
+          <span>学习工作台</span>
+        </a>
+        <a href="courses.html" class="nav-item" data-page="courses">
+          <span class="nav-icon">▤</span>
+          <span>课程路线</span>
+        </a>
+        <a href="kana.html" class="nav-item" data-page="kana">
+          <span class="nav-icon">あ</span>
+          <span>假名练习</span>
+        </a>
+        <a href="ai.html" class="nav-item" data-page="ai">
+          <span class="nav-icon">✦</span>
+          <span>智能助学</span>
+        </a>
+        <a href="progress.html" class="nav-item" data-page="progress">
+          <span class="nav-icon">◷</span>
+          <span>学习足迹</span>
+        </a>
+      </nav>
+      <div class="sidebar-footer">
+        <p class="footer-text">每天一点日语<br>把表达变成习惯</p>
+      </div>
+    </aside>
+
+    <button class="menu-toggle" id="menuToggle" aria-label="菜单">
+      <span></span>
+      <span></span>
+      <span></span>
+    </button>
+
+    <main class="main">
+      <div class="content">
+        <section class="home-hero" aria-labelledby="homeTitle">
+          <div class="home-hero__body">
+            <p class="home-eyebrow">KOTOBA · 学习工作台</p>
+            <h2 class="home-title" id="homeTitle">从今天开始，<br>把日语说出来<span class="home-title-jp">今日の一歩が、明日の自信になる。</span></h2>
+            <p class="home-intro">不必赶进度。选一课、听一遍、说一句，让每一次练习都留下看得见的成长。</p>
+          </div>
+          <aside class="home-hero__aside" aria-label="学习状态">
+            <p class="home-streak-label">你的学习轨迹</p>
+            <p class="home-streak-value"><span id="heroCompleted">0</span><small>课已完成</small></p>
+            <p class="home-streak-note" id="heroProgressStats">正在同步你的进度</p>
+          </aside>
+        </section>
+
+        <section class="section" aria-labelledby="missionTitle">
+          <h3 class="section-title" id="missionTitle">今日任务</h3>
+          <div id="continueSection"><p class="muted">正在加载学习进度...</p></div>
+        </section>
+
+        <section class="section" aria-labelledby="overviewTitle">
+          <h3 class="section-title" id="overviewTitle">学习概览</h3>
+          <div class="stats-grid" id="statsGrid">
+            <div class="stat-card"><div class="stat-value" id="totalLessons">-</div><div class="stat-label">课程总数</div></div>
+            <div class="stat-card"><div class="stat-value" id="completedLessons">-</div><div class="stat-label">已完成</div></div>
+            <div class="stat-card"><div class="stat-value" id="progressPercent">-</div><div class="stat-label">整体进度</div></div>
+          </div>
+        </section>
+
+        <section class="section" aria-labelledby="shortcutTitle">
+          <h3 class="section-title" id="shortcutTitle">练习入口</h3>
+          <div class="quick-grid">
+            <a class="quick-card" href="courses.html"><span class="quick-card__icon">▤</span><h4>按路线学</h4><p>找到下一课，围绕词汇、句型和会话完成一次学习。</p><span class="quick-card__arrow">查看课程路线 →</span></a>
+            <a class="quick-card" href="kana.html"><span class="quick-card__icon">あ</span><h4>练假名</h4><p>以翻卡与测试两种模式，巩固平假名和片假名。</p><span class="quick-card__arrow">开始假名练习 →</span></a>
+            <a class="quick-card" href="ai.html"><span class="quick-card__icon">✦</span><h4>问 AI</h4><p>把不懂的语法、造句或翻译问题，变成即时反馈。</p><span class="quick-card__arrow">打开智能助学 →</span></a>
+          </div>
+        </section>
+
+        <section class="study-rhythm" aria-label="建议学习节奏">
+          <div class="study-rhythm__number">20<small>分钟的专注学习</small></div>
+          <div class="study-rhythm__steps">
+            <p class="rhythm-step"><strong>听与读 · 6 分钟</strong>先听例句，再跟读词汇和短语。</p>
+            <p class="rhythm-step"><strong>理解 · 8 分钟</strong>看懂结构，尝试替换一个词造句。</p>
+            <p class="rhythm-step"><strong>开口 · 6 分钟</strong>完成练习，把今天学到的说出口。</p>
+          </div>
+        </section>
+      </div>
+    </main>
+  </div>
+
+  <script src="data/lessons.js"></script>
+  <script src="js/app.js"></script>
+  <script>
+    // 首页逻辑
+    (function() {
+      const stats = App.getStats();
+      document.getElementById('totalLessons').textContent = stats.total;
+      document.getElementById('completedLessons').textContent = stats.completed;
+      document.getElementById('progressPercent').textContent = stats.percent + '%';
+      document.getElementById('heroCompleted').textContent = stats.completed;
+      document.getElementById('heroProgressStats').textContent = stats.total
+        ? '已走完 ' + stats.percent + '% 的课程路线'
+        : '从第一课开始你的路线';
+
+      const continueSection = document.getElementById('continueSection');
+      const nextLesson = App.getNextLesson();
+      
+      if (!nextLesson) {
+        continueSection.innerHTML = '<div class="home-mission"><div><p class="home-mission__meta">今日任务</p><h4 class="home-mission__title">新的课程正在准备中</h4><p class="home-mission__subtitle">先去假名练习热身，保持学习节奏。</p></div><a href="kana.html" class="btn btn-primary">练习假名 →</a></div>';
+      } else {
+        const isCompleted = App.isLessonCompleted(nextLesson.id);
+        const action = isCompleted ? '复习这一课' : '开始这一课';
+        const label = isCompleted ? '下一步 · 温故知新' : '今天就从这一课开始';
+        continueSection.innerHTML = `
+          <div class="home-mission">
+            <div>
+              <div class="home-mission__meta">${label}</div>
+              <h4 class="home-mission__title">${nextLesson.title}</h4>
+              <p class="home-mission__subtitle">${nextLesson.subtitle}</p>
+              <div class="home-progress-line" aria-label="课程总体进度"><span style="width:${stats.percent}%"></span></div>
+            </div>
+            <a href="lesson.html?id=${nextLesson.id}" class="btn btn-primary">
+              ${action} →
+            </a>
+          </div>
+        `;
+      }
+    })();
+  </script>
+</body>
+</html>

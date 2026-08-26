@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>KOTOBA · 课程路线</title>
+  <link rel="stylesheet" href="css/global.css?v=2">
+  <link rel="stylesheet" href="css/components.css?v=2">
+</head>
+<body class="page-courses">
+  <div class="layout">
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-header">
+        <h1 class="logo">日本語</h1>
+        <p class="logo-sub">个人学习笔记</p>
+      </div>
+      <nav class="nav">
+        <a href="index.html" class="nav-item" data-page="home">
+          <span class="nav-icon">◉</span>
+          <span>学习工作台</span>
+        </a>
+        <a href="courses.html" class="nav-item active" data-page="courses">
+          <span class="nav-icon">▤</span>
+          <span>课程路线</span>
+        </a>
+        <a href="kana.html" class="nav-item" data-page="kana">
+          <span class="nav-icon">あ</span>
+          <span>假名练习</span>
+        </a>
+        <a href="ai.html" class="nav-item" data-page="ai">
+          <span class="nav-icon">✦</span>
+          <span>智能助学</span>
+        </a>
+        <a href="progress.html" class="nav-item" data-page="progress">
+          <span class="nav-icon">◷</span>
+          <span>学习足迹</span>
+        </a>
+      </nav>
+      <div class="sidebar-footer">
+        <p class="footer-text">每天一点日语<br>把表达变成习惯</p>
+      </div>
+    </aside>
+
+    <button class="menu-toggle" id="menuToggle" aria-label="菜单">
+      <span></span>
+      <span></span>
+      <span></span>
+    </button>
+
+    <main class="main">
+      <div class="content">
+        <section class="hero course-catalog__hero">
+          <p class="home-eyebrow">LEARNING PATH · 课程路线</p>
+          <h2 class="hero-title">每一课，都是<br>能说出口的一步</h2>
+          <p class="hero-subtitle">从下一课开始；需要时展开学习目标，按自己的节奏完成路线。</p>
+          <div class="course-catalog__hero-row">
+            <div id="heroProgressStats" class="course-catalog__hero-stats muted">正在加载进度…</div>
+            <div class="course-catalog__hero-actions"><div id="heroPrimaryCta" class="course-catalog__hero-cta"></div><button type="button" class="btn btn-outline btn-lg" id="btnAddLesson">＋ 新增课时</button></div>
+          </div>
+        </section>
+
+        <section class="section">
+          <div class="course-catalog">
+            <div class="course-list" id="courseList">
+              <p class="muted">正在加载课程列表...</p>
+            </div>
+          </div>
+        </section>
+      </div>
+    </main>
+  </div>
+
+  <script src="data/lessons.js"></script>
+  <script src="js/app.js?v=5"></script>
+  <script src="js/course-catalog.js?v=2"></script>
+  <script>
+    (function () {
+      'use strict';
+      const list = document.getElementById('courseList');
+      function openNameEditor(lessonId) {
+        if (!list) return;
+        list.querySelectorAll('[data-cc-title-form]').forEach(function (form) {
+          if (form.getAttribute('data-cc-title-form') !== lessonId) return;
+          form.hidden = false;
+          const card = form.closest('.course-card');
+          const button = card && card.querySelector('[data-cc-title-edit]');
+          if (button) button.hidden = true;
+          const input = form.querySelector('[data-cc-title]');
+          if (input) input.focus();
+        });
+      }
+
+      function renderCatalog(filter, focusLessonId) {
+        const all = App.loadAllOnce();
+        const items = CourseCatalog.buildCatalogItems(all.lessons, all.progress, all.edits);
+        const stats = App.getStats();
+        const statsEl = document.getElementById('heroProgressStats');
+        if (statsEl) statsEl.innerHTML = '已完成 <strong>' + stats.completed + '</strong> / ' + stats.total + ' 课 · 进度 <strong>' + stats.percent + '%</strong>';
+
+        const next = CourseCatalog.getNextContinueItem(items);
+        const ctaEl = document.getElementById('heroPrimaryCta');
+        if (ctaEl) {
+          if (!next) ctaEl.innerHTML = '';
+          else {
+            const st = next.status;
+            const prefix = st.isInProgress ? '继续学习' : st.isCompleted ? '复习' : '开始学习';
+            const variant = st.isCompleted ? 'btn-outline' : 'btn-primary';
+            ctaEl.innerHTML = '<a class="btn ' + variant + ' btn-lg" href="' + CourseCatalog.getLessonUrl(next.id) + '">' + prefix + ' ' + next.summary.dayDisplay + ' →</a>';
+          }
+        }
+        if (list) {
+          CourseCatalog.renderCourseList(list, {
+            tabFilter: filter || 'all', items: items, emptyText: '当前分类暂无课程。',
+            onDataChanged: function (nextFilter) { renderCatalog(nextFilter); }
+          });
+          if (focusLessonId) openNameEditor(focusLessonId);
+        }
+      }
+
+      document.getElementById('btnAddLesson').addEventListener('click', function () {
+        const lesson = App.createLesson();
+        if (!lesson) { alert('新增失败，请检查浏览器本地存储权限。'); return; }
+        renderCatalog('all', lesson.id);
+      });
+
+      renderCatalog('all');
+    })();
+  </script>
+</body>
+</html>

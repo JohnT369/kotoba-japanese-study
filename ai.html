@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>KOTOBA · 智能助学</title>
+  <link rel="stylesheet" href="css/global.css?v=2">
+  <link rel="stylesheet" href="css/components.css?v=2">
+</head>
+<body class="page-ai">
+  <div class="layout">
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-header">
+        <h1 class="logo">日本語</h1>
+        <p class="logo-sub">个人学习笔记</p>
+      </div>
+      <nav class="nav">
+        <a href="index.html" class="nav-item" data-page="home">
+          <span class="nav-icon">◉</span><span>学习工作台</span>
+        </a>
+        <a href="courses.html" class="nav-item" data-page="courses">
+          <span class="nav-icon">▤</span><span>课程路线</span>
+        </a>
+        <a href="kana.html" class="nav-item" data-page="kana">
+          <span class="nav-icon">あ</span><span>假名练习</span>
+        </a>
+        <a href="ai.html" class="nav-item active" data-page="ai">
+          <span class="nav-icon">✦</span><span>智能助学</span>
+        </a>
+        <a href="progress.html" class="nav-item" data-page="progress">
+          <span class="nav-icon">◷</span><span>学习足迹</span>
+        </a>
+      </nav>
+      <div class="sidebar-footer">
+        <p class="footer-text">每天一点日语<br>把表达变成习惯</p>
+      </div>
+    </aside>
+
+    <button class="menu-toggle" id="menuToggle" aria-label="菜单">
+      <span></span><span></span><span></span>
+    </button>
+
+    <main class="main">
+      <div class="content">
+        <section class="hero">
+          <p class="home-eyebrow">STUDY COMPANION · 智能助学</p>
+          <h2 class="hero-title">把卡住的问题，<br>变成下一句表达</h2>
+          <p class="hero-subtitle">配置自己的模型服务后，可解释语法、批改造句、翻译文本与辅助假名学习。</p>
+        </section>
+
+        <!-- 配置区 -->
+        <section class="section">
+          <h3 class="section-title">1. 接口配置</h3>
+          <div class="ai-config-card">
+            <div class="field-group">
+              <label>API Base URL（百炼 · 中国大陆）</label>
+              <input type="text" id="cfgBaseURL" placeholder="https://dashscope.aliyuncs.com/compatible-mode/v1">
+              <p class="muted" style="font-size:var(--fs-xxs);">已预设百炼公共 OpenAI 兼容地址，通常只需填写 API Key。若你使用业务空间专属 API Host 或国际地域，再替换为控制台提供的地址。</p>
+            </div>
+            <div class="field-group">
+              <label>API Key</label>
+              <input type="password" id="cfgApiKey" placeholder="sk-...">
+              <p class="muted" style="font-size:var(--fs-xxs);">仅保存在浏览器 LocalStorage，不会上传到本站服务器。</p>
+            </div>
+            <div class="field-group">
+              <label>默认模型</label>
+              <input type="text" id="cfgDefaultModel" placeholder="qwen-plus">
+            </div>
+            <div class="ai-actions">
+              <button class="btn btn-primary" id="btnSaveCfg" type="button">保存配置</button>
+              <button class="btn btn-outline" id="btnTestCfg" type="button">测试连接</button>
+              <button class="btn btn-outline" id="btnResetCfg" type="button">清空</button>
+            </div>
+            <p class="muted" id="cfgStatus" style="font-size:var(--fs-xxs);"></p>
+          </div>
+        </section>
+
+        <!-- 模型分流表 -->
+        <section class="section">
+          <h3 class="section-title">2. 模型分流</h3>
+          <p class="muted" style="font-size:var(--fs-xs);margin-bottom:var(--space-3);">已预设百炼千问分流：qwen-flash 用于快速问答，qwen-plus 用于日语理解与课程出题，qwen-max 仅用于高质量会话。</p>
+          <div id="taskModelGrid"></div>
+          <div class="ai-actions" style="margin-top:var(--space-3);">
+            <button class="btn btn-primary btn-sm" id="btnSaveTaskModels" type="button">保存分流配置</button>
+            <button class="btn btn-outline btn-sm" id="btnRestoreBailianModels" type="button">恢复百炼推荐分配</button>
+          </div>
+        </section>
+
+        <!-- 内置工具 -->
+        <section class="section">
+          <h3 class="section-title">3. 快速工具</h3>
+          <div class="seg" role="tablist" aria-label="工具" style="margin-bottom:var(--space-3);">
+            <button class="seg-btn is-active" data-tool="grammar_explain" type="button">语法解释</button>
+            <button class="seg-btn" data-tool="sentence_correct" type="button">造句批改</button>
+            <button class="seg-btn" data-tool="translate" type="button">日中互译</button>
+            <button class="seg-btn" data-tool="kana_help" type="button">假名读音</button>
+          </div>
+          <div class="field-group">
+            <label id="toolInputLabel">输入语法点（例如：A は B です）</label>
+            <textarea id="toolInput" rows="3" placeholder="例如：A は B です"></textarea>
+          </div>
+          <div class="ai-actions">
+            <button class="btn btn-primary" id="btnRunTool" type="button">调用 AI</button>
+            <span class="muted" id="toolModel" style="font-size:var(--fs-xxs);"></span>
+          </div>
+          <div class="ai-result" id="toolResult" hidden>
+            <div class="ai-result-text" id="toolResultText"></div>
+          </div>
+          <p class="muted" id="toolError" style="color:var(--color-danger);font-size:var(--fs-xs);"></p>
+        </section>
+
+        <!-- 使用说明 -->
+        <section class="section">
+          <h3 class="section-title">使用说明</h3>
+          <div class="ai-tips">
+            <p>· 本站是纯前端页面，AI 调用由浏览器直接请求你配置的 API，不经本站服务器。</p>
+            <p>· 若浏览器跨域受限，可换支持 CORS 的代理 / 国产兼容服务（如 OpenRouter / 智谱 / 通义）。</p>
+            <p>· 轻量任务（语法解释 / 翻译 / 假名）建议用 <code>gpt-4o-mini</code> 或 <code>claude-haiku</code>；批改造句和对话建议用 <code>gpt-4o</code> 或 <code>claude-sonnet</code>。</p>
+          </div>
+        </section>
+      </div>
+    </main>
+  </div>
+
+  <script src="data/lessons.js"></script>
+  <script src="js/app.js"></script>
+  <script src="js/ai.js?v=4"></script>
+  <script>
+    (function () {
+      'use strict';
+
+      // ---------- 配置 ----------
+      function loadCfgUI() {
+        const cfg = AI.getConfig();
+        const set = function (id, v) { const e = document.getElementById(id); if (e) e.value = v; };
+        set('cfgBaseURL', cfg.baseURL);
+        set('cfgApiKey', cfg.apiKey);
+        set('cfgDefaultModel', cfg.defaultModel);
+      }
+
+      function saveCfg() {
+        const cfg = {
+          baseURL: document.getElementById('cfgBaseURL').value.trim(),
+          apiKey: document.getElementById('cfgApiKey').value.trim(),
+          defaultModel: document.getElementById('cfgDefaultModel').value.trim(),
+          models: AI.getConfig().models
+        };
+        AI.saveConfig(cfg);
+        showCfgStatus('已保存');
+      }
+
+      function showCfgStatus(msg) {
+        const e = document.getElementById('cfgStatus');
+        if (e) e.textContent = msg;
+      }
+
+      // ---------- 模型分流表 ----------
+      function renderTaskGrid() {
+        const grid = document.getElementById('taskModelGrid');
+        if (!grid) return;
+        const cfg = AI.getConfig();
+        const tasks = AI.TASKS;
+        const keys = Object.keys(tasks);
+        grid.innerHTML = keys.map(function (k) {
+          const t = tasks[k];
+          const model = (cfg.models && cfg.models[k]) || t.defaultModel;
+          return (
+            '<div class="task-model-row">' +
+              '<div class="tm-info">' +
+                '<div class="tm-label">' + t.label + '</div>' +
+                '<div class="tm-desc">' + t.desc + ' · 层级：' + t.tier + '</div>' +
+              '</div>' +
+              '<input type="text" class="tm-input" data-task-model="' + k + '" value="' + model + '">' +
+            '</div>'
+          );
+        }).join('');
+      }
+
+      function saveTaskModels() {
+        const cfg = AI.getConfig();
+        cfg.models = cfg.models || {};
+        document.querySelectorAll('[data-task-model]').forEach(function (inp) {
+          const k = inp.getAttribute('data-task-model');
+          cfg.models[k] = inp.value.trim();
+        });
+        AI.saveConfig(cfg);
+        showCfgStatus('分流配置已保存');
+      }
+
+      function restoreBailianModels() {
+        const cfg = AI.getConfig();
+        cfg.defaultModel = 'qwen-plus';
+        cfg.models = {};
+        Object.keys(AI.TASKS).forEach(function (key) {
+          cfg.models[key] = AI.TASKS[key].defaultModel;
+        });
+        AI.saveConfig(cfg);
+        loadCfgUI();
+        renderTaskGrid();
+        showCfgStatus('已恢复百炼推荐模型分配');
+      }
+
+      // ---------- 工具 ----------
+      let currentTool = 'grammar_explain';
+
+      const TOOL_LABELS = {
+        grammar_explain:  { label: '输入语法点（例如：A は B です）',  ph: 'A は B です' },
+        sentence_correct: { label: '输入你造的日语句子',                ph: '私は学生です。' },
+        translate:        { label: '输入要翻译的文本（日→中 / 中→日）',  ph: 'はじめまして' },
+        kana_help:        { label: '输入假名或单词，问读音',           ph: 'には' }
+      };
+
+      function switchTool(tool) {
+        currentTool = tool;
+        const t = TOOL_LABELS[tool];
+        document.getElementById('toolInputLabel').textContent = t.label;
+        const inp = document.getElementById('toolInput');
+        inp.placeholder = t.ph;
+        const tm = document.getElementById('toolModel');
+        if (tm) tm.textContent = '将使用模型：' + AI.pickModel(tool);
+      }
+
+      async function runTool() {
+        const input = document.getElementById('toolInput').value.trim();
+        if (!input) { alert('请输入内容'); return; }
+        if (!AI.hasKey()) { alert('请先在上方配置 API Key'); return; }
+
+        const resBox = document.getElementById('toolResult');
+        const resText = document.getElementById('toolResultText');
+        const errBox = document.getElementById('toolError');
+        const btn = document.getElementById('btnRunTool');
+        errBox.textContent = '';
+        resBox.hidden = false;
+        resText.textContent = '调用中...';
+        btn.disabled = true;
+
+        const prompt = buildPrompt(currentTool, input);
+        const r = await AI.callAI(currentTool, prompt);
+        btn.disabled = false;
+        if (r.ok) {
+          resText.textContent = r.text;
+        } else {
+          resText.textContent = '';
+          errBox.textContent = '❌ ' + r.error;
+        }
+      }
+
+      function buildPrompt(tool, input) {
+        const m = {
+          grammar_explain:  '请解释这个日语语法点：' + input,
+          sentence_correct: '请批改我造的日语句子，指出错误并给正确版本：\n' + input,
+          translate:        '请翻译以下文本（日中互译，自动判断方向）：\n' + input,
+          kana_help:        '请说明以下假名 / 单词的读音、声调，并给一个例词：\n' + input
+        };
+        return m[tool] || input;
+      }
+
+      // ---------- 事件 ----------
+      function bind() {
+        document.getElementById('btnSaveCfg').addEventListener('click', saveCfg);
+        document.getElementById('btnResetCfg').addEventListener('click', function () {
+          if (confirm('清空所有 AI 配置？')) {
+            AI.resetConfig();
+            loadCfgUI();
+            renderTaskGrid();
+            showCfgStatus('已清空');
+          }
+        });
+        document.getElementById('btnTestCfg').addEventListener('click', async function () {
+          saveCfg();
+          if (!AI.hasKey()) { alert('请先填 API Key'); return; }
+          const btn = this;
+          btn.disabled = true;
+          btn.textContent = '测试中...';
+          const r = await AI.callAI('kana_help', '假名「あ」怎么读？');
+          btn.disabled = false;
+          btn.textContent = '测试连接';
+          showCfgStatus(r.ok ? '✅ 连接成功，模型：' + r.model + '，返回：' + r.text.slice(0, 40) : '❌ ' + r.error);
+        });
+      document.getElementById('btnSaveTaskModels').addEventListener('click', saveTaskModels);
+      document.getElementById('btnRestoreBailianModels').addEventListener('click', restoreBailianModels);
+
+        document.querySelectorAll('[data-tool]').forEach(function (b) {
+          b.addEventListener('click', function () {
+            document.querySelectorAll('[data-tool]').forEach(function (x) { x.classList.remove('is-active'); });
+            b.classList.add('is-active');
+            switchTool(b.getAttribute('data-tool'));
+          });
+        });
+
+        document.getElementById('btnRunTool').addEventListener('click', runTool);
+      }
+
+      function init() {
+        loadCfgUI();
+        renderTaskGrid();
+        bind();
+
+        // 支持 URL 参数预填：?tool=grammar_explain&q=A%20は%20B%20です
+        const params = new URLSearchParams(window.location.search);
+        const tool = params.get('tool');
+        const q = params.get('q');
+        if (tool && TOOL_LABELS[tool]) {
+          document.querySelectorAll('[data-tool]').forEach(function (b) {
+            b.classList.toggle('is-active', b.getAttribute('data-tool') === tool);
+          });
+          switchTool(tool);
+        } else {
+          switchTool('grammar_explain');
+        }
+        if (q) {
+          document.getElementById('toolInput').value = q;
+        }
+      }
+
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', init);
+      } else {
+        init();
+      }
+    })();
+  </script>
+</body>
+</html>
