@@ -14,6 +14,7 @@
   let activeUser = null;
   let hydratedUserId = null;
   let syncing = false;
+  const isAuthPage = document.body.classList.contains('page-auth');
 
   function latestTimestamp(entry) {
     return entry && (entry.lastVisitedAt || entry.completedAt || entry.startedAt || '') || '';
@@ -96,6 +97,10 @@
     }
     await Promise.all([syncProgress(), syncCourseState()]);
     window.dispatchEvent(new Event('app:state-synced'));
+    if (isAuthPage) {
+      window.location.replace('index.html');
+      return;
+    }
     const renderedFor = sessionStorage.getItem('kotoba:hydrated-user');
     if (renderedFor !== user.id) {
       sessionStorage.setItem('kotoba:hydrated-user', user.id);
@@ -113,6 +118,10 @@
   }
 
   function closeModal() {
+    if (isAuthPage) {
+      window.location.href = 'index.html';
+      return;
+    }
     const modal = document.getElementById('authModal');
     if (modal) modal.hidden = true;
   }
@@ -126,10 +135,7 @@
     button.className = 'auth-entry__button';
     button.textContent = activeUser ? (activeUser.email || '我的账户') : '登录 / 注册';
     button.addEventListener('click', function () {
-      if (!activeUser) {
-        document.getElementById('authModal').hidden = false;
-        document.getElementById('authEmail').focus();
-      }
+      if (!activeUser) window.location.href = 'login.html';
     });
     entry.appendChild(button);
     if (activeUser) {
@@ -151,15 +157,17 @@
   }
 
   function mountAuthUI() {
-    const entry = document.createElement('div');
-    entry.id = 'authEntry';
-    entry.className = 'auth-entry';
-    document.body.appendChild(entry);
+    if (!isAuthPage) {
+      const entry = document.createElement('div');
+      entry.id = 'authEntry';
+      entry.className = 'auth-entry';
+      document.body.appendChild(entry);
+    }
 
     const modal = document.createElement('div');
     modal.id = 'authModal';
     modal.className = 'auth-modal';
-    modal.hidden = true;
+    modal.hidden = !isAuthPage;
     modal.innerHTML = '<div class="auth-modal__backdrop"></div><section class="auth-modal__panel" role="dialog" aria-modal="true" aria-labelledby="authTitle"><button class="auth-modal__close" type="button" aria-label="关闭">×</button><p class="auth-modal__eyebrow">KOTOBA ACCOUNT</p><h2 id="authTitle">登录以保存你的学习</h2><p class="auth-modal__intro">课程进度、自建课程和课程编辑将仅同步到你的账户。</p><form id="authForm"><label>邮箱<input id="authEmail" type="email" autocomplete="email" required></label><label>密码<input id="authPassword" type="password" minlength="8" autocomplete="current-password" required></label><p id="authMessage" class="auth-modal__message" aria-live="polite"></p><button id="authSubmit" class="btn btn-primary btn-block" type="submit">登录</button></form><button id="authModeToggle" class="auth-modal__toggle" type="button">没有账户？注册</button></section>';
     document.body.appendChild(modal);
     let mode = 'signin';
@@ -205,6 +213,18 @@
     renderAccount();
   }
 
+  function mountSidebarEntry() {
+    if (isAuthPage) return;
+    const nav = document.querySelector('.sidebar .nav');
+    if (!nav) return;
+    const link = document.createElement('a');
+    link.id = 'authSidebarEntry';
+    link.className = 'nav-item auth-sidebar-entry';
+    link.href = 'login.html';
+    link.innerHTML = '<span class="nav-icon">◌</span><span>登录 / 注册</span>';
+    nav.appendChild(link);
+  }
+
   window.addEventListener('app:progress-changed', function () { void syncProgress(); });
   window.addEventListener('app:course-state-changed', function () { void syncCourseState(); });
   client.auth.onAuthStateChange(function (_event, session) {
@@ -217,6 +237,7 @@
 
   function init() {
     mountAuthUI();
+    mountSidebarEntry();
     client.auth.getSession().then(function (result) {
       if (result.data.session && result.data.session.user) return hydrateUser(result.data.session.user);
       renderAccount();

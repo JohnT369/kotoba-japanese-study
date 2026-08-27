@@ -3317,3 +3317,13 @@ body.is-edit-mode {
 .auth-modal__toggle { display: block; margin: 15px auto 0; border: 0; background: transparent; color: var(--color-accent); font-size: var(--fs-13); text-decoration: underline; }
 @media (max-width: 860px) { .auth-entry { top: 12px; right: 14px; } }
 @media (max-width: 560px) { .auth-entry__button { max-width: 150px; } .auth-modal__panel { padding: 28px 22px; } }
+
+.page-auth { min-height: 100vh; background: radial-gradient(circle at 14% 12%, #dceceb 0, transparent 27rem), #f7f6f1; }
+.auth-page { min-height: 100vh; display: grid; align-content: space-between; padding: 32px; }
+.auth-page__brand { display: inline-flex; flex-direction: column; width: fit-content; color: var(--color-accent); text-decoration: none; }
+.auth-page__brand strong { font-family: var(--font-serif); font-size: var(--fs-28); }
+.auth-page__brand span { margin-top: 3px; color: var(--color-text-secondary); font-size: var(--fs-12); }
+.auth-page__statement { max-width: 320px; color: var(--color-text-secondary); font-size: var(--fs-15); line-height: 1.7; }
+.page-auth .auth-modal__backdrop { background: rgba(24, 53, 63, .3); }
+.page-auth .auth-modal__panel { box-shadow: 0 28px 80px rgba(22, 53, 63, .24); }
+@media (max-width: 560px) { .auth-page { padding: 22px; } }
