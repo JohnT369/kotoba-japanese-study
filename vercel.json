@@ -2,6 +2,10 @@
   "buildCommand": "npm run build",
   "outputDirectory": "dist/client",
   "functions": {
+    "server.js": {
+      "includeFiles": "dist/client/**",
+      "maxDuration": 30
+    },
     "api/ai.js": {
       "maxDuration": 30
     }
