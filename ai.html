@@ -4,8 +4,8 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>KOTOBA · 智能助学</title>
-  <link rel="stylesheet" href="css/global.css?v=2">
-  <link rel="stylesheet" href="css/components.css?v=2">
+  <link rel="stylesheet" href="css/global.css?v=3">
+  <link rel="stylesheet" href="css/components.css?v=3">
 </head>
 <body class="page-ai">
   <div class="layout">
@@ -45,50 +45,26 @@
         <section class="hero">
           <p class="home-eyebrow">STUDY COMPANION · 智能助学</p>
           <h2 class="hero-title">把卡住的问题，<br>变成下一句表达</h2>
-          <p class="hero-subtitle">配置自己的模型服务后，可解释语法、批改造句、翻译文本与辅助假名学习。</p>
+          <p class="hero-subtitle">由站点安全调用模型服务，可解释语法、批改造句、翻译文本与辅助假名学习。</p>
         </section>
 
-        <!-- 配置区 -->
         <section class="section">
-          <h3 class="section-title">1. 接口配置</h3>
+          <h3 class="section-title">安全调用已启用</h3>
           <div class="ai-config-card">
-            <div class="field-group">
-              <label>API Base URL（百炼 · 中国大陆）</label>
-              <input type="text" id="cfgBaseURL" placeholder="https://dashscope.aliyuncs.com/compatible-mode/v1">
-              <p class="muted" style="font-size:var(--fs-xxs);">已预设百炼公共 OpenAI 兼容地址，通常只需填写 API Key。若你使用业务空间专属 API Host 或国际地域，再替换为控制台提供的地址。</p>
-            </div>
-            <div class="field-group">
-              <label>API Key</label>
-              <input type="password" id="cfgApiKey" placeholder="sk-...">
-              <p class="muted" style="font-size:var(--fs-xxs);">仅保存在浏览器 LocalStorage，不会上传到本站服务器。</p>
-            </div>
-            <div class="field-group">
-              <label>默认模型</label>
-              <input type="text" id="cfgDefaultModel" placeholder="qwen-plus">
-            </div>
-            <div class="ai-actions">
-              <button class="btn btn-primary" id="btnSaveCfg" type="button">保存配置</button>
-              <button class="btn btn-outline" id="btnTestCfg" type="button">测试连接</button>
-              <button class="btn btn-outline" id="btnResetCfg" type="button">清空</button>
-            </div>
-            <p class="muted" id="cfgStatus" style="font-size:var(--fs-xxs);"></p>
+            <p>模型密钥、服务地址与模型分流均由站点服务端管理，不会发送到你的浏览器。</p>
+            <p class="muted" style="font-size:var(--fs-xs);">如遇服务繁忙，请稍后再试；学习内容不会包含你的密钥或私密配置。</p>
           </div>
         </section>
 
-        <!-- 模型分流表 -->
         <section class="section">
-          <h3 class="section-title">2. 模型分流</h3>
-          <p class="muted" style="font-size:var(--fs-xs);margin-bottom:var(--space-3);">已预设百炼千问分流：qwen-flash 用于快速问答，qwen-plus 用于日语理解与课程出题，qwen-max 仅用于高质量会话。</p>
+          <h3 class="section-title">模型分流</h3>
+          <p class="muted" style="font-size:var(--fs-xs);margin-bottom:var(--space-3);">快速问答使用轻量模型，课程出题使用标准模型，语音会话使用高质量模型；分流规则由站点统一维护。</p>
           <div id="taskModelGrid"></div>
-          <div class="ai-actions" style="margin-top:var(--space-3);">
-            <button class="btn btn-primary btn-sm" id="btnSaveTaskModels" type="button">保存分流配置</button>
-            <button class="btn btn-outline btn-sm" id="btnRestoreBailianModels" type="button">恢复百炼推荐分配</button>
-          </div>
         </section>
 
         <!-- 内置工具 -->
         <section class="section">
-          <h3 class="section-title">3. 快速工具</h3>
+          <h3 class="section-title">快速工具</h3>
           <div class="seg" role="tablist" aria-label="工具" style="margin-bottom:var(--space-3);">
             <button class="seg-btn is-active" data-tool="grammar_explain" type="button">语法解释</button>
             <button class="seg-btn" data-tool="sentence_correct" type="button">造句批改</button>
@@ -113,9 +89,9 @@
         <section class="section">
           <h3 class="section-title">使用说明</h3>
           <div class="ai-tips">
-            <p>· 本站是纯前端页面，AI 调用由浏览器直接请求你配置的 API，不经本站服务器。</p>
-            <p>· 若浏览器跨域受限，可换支持 CORS 的代理 / 国产兼容服务（如 OpenRouter / 智谱 / 通义）。</p>
-            <p>· 轻量任务（语法解释 / 翻译 / 假名）建议用 <code>gpt-4o-mini</code> 或 <code>claude-haiku</code>；批改造句和对话建议用 <code>gpt-4o</code> 或 <code>claude-sonnet</code>。</p>
+            <p>· AI 请求会先发送到本站服务端，再由服务端调用模型；浏览器不会接触 API Key。</p>
+            <p>· 模型、提示词与调用额度由站点统一管理，保证课程练习和语音会话使用对应难度。</p>
+            <p>· 请勿在输入框中填写密码、支付信息或其他敏感个人信息。</p>
           </div>
         </section>
       </div>
@@ -124,80 +100,29 @@
 
   <script src="data/lessons.js"></script>
   <script src="js/app.js"></script>
-  <script src="js/ai.js?v=5"></script>
+  <script src="js/ai.js?v=6"></script>
   <script>
     (function () {
       'use strict';
-
-      // ---------- 配置 ----------
-      function loadCfgUI() {
-        const cfg = AI.getConfig();
-        const set = function (id, v) { const e = document.getElementById(id); if (e) e.value = v; };
-        set('cfgBaseURL', cfg.baseURL);
-        set('cfgApiKey', cfg.apiKey);
-        set('cfgDefaultModel', cfg.defaultModel);
-      }
-
-      function saveCfg() {
-        const cfg = {
-          baseURL: document.getElementById('cfgBaseURL').value.trim(),
-          apiKey: document.getElementById('cfgApiKey').value.trim(),
-          defaultModel: document.getElementById('cfgDefaultModel').value.trim(),
-          models: AI.getConfig().models
-        };
-        AI.saveConfig(cfg);
-        showCfgStatus('已保存');
-      }
-
-      function showCfgStatus(msg) {
-        const e = document.getElementById('cfgStatus');
-        if (e) e.textContent = msg;
-      }
 
       // ---------- 模型分流表 ----------
       function renderTaskGrid() {
         const grid = document.getElementById('taskModelGrid');
         if (!grid) return;
-        const cfg = AI.getConfig();
         const tasks = AI.TASKS;
         const keys = Object.keys(tasks);
         grid.innerHTML = keys.map(function (k) {
           const t = tasks[k];
-          const model = (cfg.models && cfg.models[k]) || t.defaultModel;
           return (
             '<div class="task-model-row">' +
               '<div class="tm-info">' +
                 '<div class="tm-label">' + t.label + '</div>' +
                 '<div class="tm-desc">' + t.desc + ' · 层级：' + t.tier + '</div>' +
               '</div>' +
-              '<input type="text" class="tm-input" data-task-model="' + k + '" value="' + model + '">' +
+              '<span class="tm-model">' + AI.pickModel(k) + '</span>' +
             '</div>'
           );
         }).join('');
-      }
-
-      function saveTaskModels() {
-        const cfg = AI.getConfig();
-        cfg.models = cfg.models || {};
-        document.querySelectorAll('[data-task-model]').forEach(function (inp) {
-          const k = inp.getAttribute('data-task-model');
-          cfg.models[k] = inp.value.trim();
-        });
-        AI.saveConfig(cfg);
-        showCfgStatus('分流配置已保存');
-      }
-
-      function restoreBailianModels() {
-        const cfg = AI.getConfig();
-        cfg.defaultModel = 'qwen-plus';
-        cfg.models = {};
-        Object.keys(AI.TASKS).forEach(function (key) {
-          cfg.models[key] = AI.TASKS[key].defaultModel;
-        });
-        AI.saveConfig(cfg);
-        loadCfgUI();
-        renderTaskGrid();
-        showCfgStatus('已恢复百炼推荐模型分配');
       }
 
       // ---------- 工具 ----------
@@ -223,8 +148,6 @@
       async function runTool() {
         const input = document.getElementById('toolInput').value.trim();
         if (!input) { alert('请输入内容'); return; }
-        if (!AI.hasKey()) { alert('请先在上方配置 API Key'); return; }
-
         const resBox = document.getElementById('toolResult');
         const resText = document.getElementById('toolResultText');
         const errBox = document.getElementById('toolError');
@@ -257,29 +180,6 @@
 
       // ---------- 事件 ----------
       function bind() {
-        document.getElementById('btnSaveCfg').addEventListener('click', saveCfg);
-        document.getElementById('btnResetCfg').addEventListener('click', function () {
-          if (confirm('清空所有 AI 配置？')) {
-            AI.resetConfig();
-            loadCfgUI();
-            renderTaskGrid();
-            showCfgStatus('已清空');
-          }
-        });
-        document.getElementById('btnTestCfg').addEventListener('click', async function () {
-          saveCfg();
-          if (!AI.hasKey()) { alert('请先填 API Key'); return; }
-          const btn = this;
-          btn.disabled = true;
-          btn.textContent = '测试中...';
-          const r = await AI.callAI('kana_help', '假名「あ」怎么读？');
-          btn.disabled = false;
-          btn.textContent = '测试连接';
-          showCfgStatus(r.ok ? '✅ 连接成功，模型：' + r.model + '，返回：' + r.text.slice(0, 40) : '❌ ' + r.error);
-        });
-      document.getElementById('btnSaveTaskModels').addEventListener('click', saveTaskModels);
-      document.getElementById('btnRestoreBailianModels').addEventListener('click', restoreBailianModels);
-
         document.querySelectorAll('[data-tool]').forEach(function (b) {
           b.addEventListener('click', function () {
             document.querySelectorAll('[data-tool]').forEach(function (x) { x.classList.remove('is-active'); });
@@ -292,7 +192,6 @@
       }
 
       function init() {
-        loadCfgUI();
         renderTaskGrid();
         bind();
 

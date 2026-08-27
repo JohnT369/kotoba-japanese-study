@@ -32,14 +32,69 @@
   --shadow-sm: 0 1px 2px rgba(24, 35, 49, .03);
   --shadow-md: 0 12px 32px rgba(24, 35, 49, .07);
   --shadow-lg: 0 24px 60px rgba(24, 35, 49, .11);
-  --fs-xxs: 12px;
-  --fs-xs: 13px;
-  --fs-sm: 14px;
-  --fs-base: 16px;
-  --fs-md: 18px;
-  --fs-lg: 24px;
-  --fs-xl: 34px;
+  /* ---------- 字体族 ---------- */
+  --font-sans: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Yu Gothic", "Noto Sans JP", "PingFang SC", "Microsoft YaHei", sans-serif;
+  --font-serif: "Hiragino Mincho ProN", "Yu Mincho", "Noto Serif JP", Georgia, serif;
+  --font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+
+  /* ---------- 字号 ---------- */
+  --fs-10: 10px;
+  --fs-11: 11px;
+  --fs-12: 12px;
+  --fs-13: 13px;
+  --fs-14: 14px;
+  --fs-15: 15px;
+  --fs-16: 16px;
+  --fs-17: 17px;
+  --fs-18: 18px;
+  --fs-19: 19px;
+  --fs-20: 20px;
+  --fs-21: 21px;
+  --fs-22: 22px;
+  --fs-24: 24px;
+  --fs-25: 25px;
+  --fs-28: 28px;
+  --fs-30: 30px;
+  --fs-31: 31px;
+  --fs-32: 32px;
+  --fs-34: 34px;
+  --fs-36: 36px;
+  --fs-48: 48px;
+  --fs-49: 49px;
+  --fs-64: 64px;
+  --fs-72: 72px;
+  --fs-78: 78px;
+  --fs-84: 84px;
+
+  /* 兼容旧 Token */
+  --fs-xxs: var(--fs-12);
+  --fs-xs: var(--fs-13);
+  --fs-sm: var(--fs-14);
+  --fs-base: var(--fs-16);
+  --fs-md: var(--fs-18);
+  --fs-lg: var(--fs-24);
+  --fs-xl: var(--fs-34);
   --fs-xxl: clamp(38px, 4vw, 58px);
+
+  /* ---------- 字重 ---------- */
+  --fw-regular: 400;
+  --fw-medium: 500;
+  --fw-semibold: 600;
+  --fw-bold: 700;
+
+  /* ---------- 行高 ---------- */
+  --lh-tight: 1.18;
+  --lh-snug: 1.4;
+  --lh-normal: 1.5;
+  --lh-relaxed: 1.65;
+  --lh-loose: 1.85;
+
+  /* ---------- 字距 ---------- */
+  --tracking-tight: -0.025em;
+  --tracking-normal: 0;
+  --tracking-wide: 0.03em;
+  --tracking-wider: 0.08em;
+  --tracking-widest: 0.15em;
   --space-1: 4px;
   --space-2: 8px;
   --space-3: 12px;
@@ -53,12 +108,12 @@
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 html { scroll-behavior: smooth; -webkit-text-size-adjust: 100%; }
-body { min-width: 320px; font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Yu Gothic", "Noto Sans JP", "PingFang SC", "Microsoft YaHei", sans-serif; font-size: var(--fs-base); line-height: 1.65; color: var(--color-text); background: var(--color-bg); -webkit-font-smoothing: antialiased; }
+body { min-width: 320px; font-family: var(--font-sans); font-size: var(--fs-base); line-height: var(--lh-relaxed); color: var(--color-text); background: var(--color-bg); -webkit-font-smoothing: antialiased; }
 a { color: inherit; text-decoration: none; transition: color var(--transition), transform var(--transition), background var(--transition), border-color var(--transition); }
 button, input, textarea, select { font: inherit; }
 button { border: 0; background: none; cursor: pointer; color: inherit; }
 ul, ol { list-style: none; }
-h1, h2, h3, h4, h5, h6 { color: var(--color-text); font-weight: 720; line-height: 1.18; letter-spacing: -.025em; }
+h1, h2, h3, h4, h5, h6 { color: var(--color-text); font-weight: var(--fw-bold); line-height: var(--lh-tight); letter-spacing: var(--tracking-tight); }
 ::selection { background: #d9e7ea; }
 
 /* ---------- Application shell ---------- */
@@ -66,16 +121,16 @@ h1, h2, h3, h4, h5, h6 { color: var(--color-text); font-weight: 720; line-height
 .sidebar { display: flex; flex: 0 0 var(--sidebar-width); flex-direction: column; position: sticky; top: 0; z-index: 50; height: 100vh; padding: 30px 20px 22px; color: #eaf1f2; background: #1c3448; }
 .sidebar::after { content: ""; position: absolute; inset: auto 20px 18px; height: 1px; background: rgba(255,255,255,.12); }
 .sidebar-header { display: flex; align-items: center; gap: 12px; margin: 0 8px 44px; }
-.sidebar-header::before { content: "あ"; display: grid; place-items: center; width: 38px; height: 38px; border-radius: 13px; color: #1c3448; background: #f1d6c7; font-family: Georgia, "Yu Mincho", serif; font-size: 21px; font-weight: 700; }
-.logo { font-size: 21px; letter-spacing: .04em; color: #fff; }
-.logo-sub { margin-top: 1px; color: #adc0c9; font-size: 11px; letter-spacing: .08em; }
+.sidebar-header::before { content: "あ"; display: grid; place-items: center; width: 38px; height: 38px; border-radius: 13px; color: #1c3448; background: #f1d6c7; font-family: var(--font-serif); font-size: var(--fs-21); font-weight: var(--fw-bold); }
+.logo { font-size: var(--fs-21); letter-spacing: var(--tracking-wide); color: #fff; }
+.logo-sub { margin-top: 1px; color: #adc0c9; font-size: var(--fs-11); letter-spacing: var(--tracking-wider); }
 .nav { display: flex; flex: 1; flex-direction: column; gap: 5px; }
-.nav-item { display: flex; align-items: center; gap: 13px; padding: 12px 13px; border: 1px solid transparent; border-radius: 12px; color: #c4d2d8; font-size: 14px; font-weight: 560; }
+.nav-item { display: flex; align-items: center; gap: 13px; padding: 12px 13px; border: 1px solid transparent; border-radius: 12px; color: #c4d2d8; font-size: var(--fs-14); font-weight: var(--fw-semibold); }
 .nav-item:hover { color: #fff; background: rgba(255,255,255,.075); }
 .nav-item.active { color: #1c3448; background: #fbfbf7; box-shadow: 0 5px 15px rgba(5,20,31,.12); }
-.nav-icon { display: inline-grid; place-items: center; width: 20px; color: currentColor; font-size: 16px; line-height: 1; }
+.nav-icon { display: inline-grid; place-items: center; width: 20px; color: currentColor; font-size: var(--fs-16); line-height: 1; }
 .sidebar-footer { margin: auto 8px 8px; padding-top: 22px; border-top: 1px solid rgba(255,255,255,.14); }
-.footer-text { color: #adc0c9; font-size: 12px; line-height: 1.85; }
+.footer-text { color: #adc0c9; font-size: var(--fs-12); line-height: var(--lh-loose); }
 
 .main { flex: 1; min-width: 0; padding: 54px 56px 72px; }
 .content { display: flex; flex-direction: column; width: 100%; max-width: var(--max-read); margin: 0 auto; gap: 54px; }
@@ -83,7 +138,7 @@ h1, h2, h3, h4, h5, h6 { color: var(--color-text); font-weight: 720; line-height
 .hero-title { max-width: 720px; font-size: var(--fs-xl); }
 .hero-subtitle { max-width: 680px; margin-top: 11px; color: var(--color-text-secondary); font-size: var(--fs-md); }
 .section { display: flex; flex-direction: column; gap: 20px; }
-.section-title { display: flex; align-items: center; gap: 10px; font-size: 21px; }
+.section-title { display: flex; align-items: center; gap: 10px; font-size: var(--fs-21); font-weight: var(--fw-bold); }
 .section-title::before { content: ""; width: 8px; height: 8px; border-radius: 99px; background: var(--color-red); box-shadow: 0 0 0 5px var(--color-red-soft); }
 .muted { color: var(--color-text-muted); font-size: var(--fs-sm); }
 
@@ -95,4 +150,4 @@ h1, h2, h3, h4, h5, h6 { color: var(--color-text); font-weight: 720; line-height
 .menu-toggle.is-open span:nth-child(3) { transform: translateY(-7px) rotate(-45deg); }
 
 @media (max-width: 980px) { .sidebar { position: fixed; width: 278px; transform: translateX(-100%); transition: transform .3s ease; box-shadow: var(--shadow-lg); } .sidebar.is-open { transform: translateX(0); } .menu-toggle { display: flex; } .main { padding: 84px 28px 52px; } }
-@media (max-width: 620px) { :root { --fs-xxl: 38px; } .main { padding: 82px 16px 44px; } .content { gap: 42px; } .hero-title { font-size: 32px; } .hero-subtitle { font-size: 16px; } .section { gap: 16px; } }
+@media (max-width: 620px) { :root { --fs-xxl: 38px; } .main { padding: 82px 16px 44px; } .content { gap: 42px; } .hero-title { font-size: var(--fs-32); } .hero-subtitle { font-size: var(--fs-16); } .section { gap: 16px; } }

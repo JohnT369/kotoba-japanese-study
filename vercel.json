@@ -1,0 +1,9 @@
+{
+  "buildCommand": "npm run build",
+  "outputDirectory": "dist/client",
+  "functions": {
+    "api/ai.js": {
+      "maxDuration": 30
+    }
+  }
+}

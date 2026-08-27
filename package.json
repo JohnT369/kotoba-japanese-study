@@ -2,7 +2,11 @@
   "name": "kotoba-japanese-study",
   "private": true,
   "version": "1.0.0",
+  "engines": {
+    "node": ">=20"
+  },
   "scripts": {
-    "build": "node scripts/build-site.mjs"
+    "build": "node scripts/build-site.mjs",
+    "dev": "vercel dev"
   }
 }

@@ -624,7 +624,7 @@
 
   // 模块 1：单词+短语（紧凑表格布局）
   function editRenderVocabularyList(vocab, phrases, moduleNum) {
-    vocab = vocab && vocab.length ? vocab : [{ word: '', reading: '', meaning: '', type: '', accent: '', note: '' }];
+    vocab = vocab && vocab.length ? vocab : [{ word: '', reading: '', meaning: '', accent: '' }];
     const items = vocab.map(function (v, i) {
       return (
         '<div class="edit-row" data-list-name="vocabulary" data-list-index="' + i + '">' +
@@ -642,16 +642,8 @@
               '<input type="text" data-edit-field="释义 (meaning)" value="' + escapeHTML(v.meaning || '') + '" placeholder="例：我">' +
             '</div>' +
             '<div class="edit-cell">' +
-              '<label class="edit-cell__label">词性</label>' +
-              '<input type="text" data-edit-field="词性 (type)" value="' + escapeHTML(v.type || '') + '" placeholder="例：名词">' +
-            '</div>' +
-            '<div class="edit-cell">' +
               '<label class="edit-cell__label">语调</label>' +
               '<input type="text" data-edit-field="语调 (accent)" value="' + escapeHTML(v.accent != null ? v.accent : '') + '" placeholder="例：0">' +
-            '</div>' +
-            '<div class="edit-cell">' +
-              '<label class="edit-cell__label">备注</label>' +
-              '<input type="text" data-edit-field="备注 (note)" value="' + escapeHTML(v.note || '') + '" placeholder="例：这个词...">' +
             '</div>' +
           '</div>' +
           '<div class="edit-row__footer">' +
@@ -1140,16 +1132,21 @@
 
     // ===== 新 Schema 3 大模块 =====
 
-    // 模块1：vocabulary（6 列）+ phrases
-    const vocabulary = collectListItems(root, 'vocabulary').map(function (item) {
-      return readItemFields(item, [
+    // 模块1：vocabulary（4 列：word/reading/meaning/accent）+ phrases
+    // type 和 note 字段已从编辑 UI 中移除，保存时从原始数据保留
+    const originalVocab = original.vocabulary || [];
+    const vocabulary = collectListItems(root, 'vocabulary').map(function (item, idx) {
+      const originalItem = originalVocab[idx] || {};
+      const readItem = readItemFields(item, [
         { field: '汉字·外来语 (word)', out: 'word' },
         { field: '假名注音 (reading)', out: 'reading' },
         { field: '释义 (meaning)', out: 'meaning' },
-        { field: '词性 (type)', out: 'type' },
-        { field: '语调 (accent)', out: 'accent' },
-        { field: '备注 (note)', out: 'note' }
+        { field: '语调 (accent)', out: 'accent' }
       ]);
+      // 保留原始的 type 和 note（不在编辑 UI 中）
+      readItem.type = originalItem.type || '';
+      readItem.note = originalItem.note || '';
+      return readItem;
     }).filter(function (v) { return (v.word && v.word.trim()) || (v.reading && v.reading.trim()); });
 
     const phrases = collectListItems(root, 'phrases').map(function (item) {

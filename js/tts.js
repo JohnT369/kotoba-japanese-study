@@ -16,7 +16,10 @@
 (function () {
   'use strict';
 
-  const EDGE_TTS_PROXY = 'http://localhost:3001';
+  // 本机开发可使用 Python Edge TTS 代理；线上部署时直接降级至浏览器语音，
+  // 避免公开站点向访问者本机的 localhost 发送无效请求。
+  const IS_LOCAL = /^(localhost|127\.0\.0\.1)$/i.test(window.location.hostname);
+  const EDGE_TTS_PROXY = IS_LOCAL ? 'http://localhost:3001' : '';
   const EDGE_TIMEOUT = 5000;
 
   let currentEngine = 'auto';
@@ -34,6 +37,10 @@
 
   async function checkEdgeTTS() {
     if (edgeAvailable !== null) return edgeAvailable;
+    if (!EDGE_TTS_PROXY) {
+      edgeAvailable = false;
+      return false;
+    }
     try {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), EDGE_TIMEOUT);
@@ -214,6 +221,7 @@
   }
 
   async function getEdgeVoices() {
+    if (!EDGE_TTS_PROXY) return [];
     try {
       const res = await fetch(EDGE_TTS_PROXY + '/api/voices');
       if (res.ok) return await res.json();
