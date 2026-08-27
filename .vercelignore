@@ -1,0 +1,3 @@
+# Local-only Edge TTS helper; production uses the browser's built-in speech API.
+tools/
+start.sh
