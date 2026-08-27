@@ -13,4 +13,10 @@ for (const entry of ['index.html', 'courses.html', 'lesson.html', 'kana.html', '
   await cp(path.join(root, entry), path.join(client, entry), { recursive: true });
 }
 
+await mkdir(path.join(client, 'vendor'), { recursive: true });
+await cp(
+  path.join(root, 'node_modules', '@supabase', 'supabase-js', 'dist', 'umd', 'supabase.js'),
+  path.join(client, 'vendor', 'supabase.js')
+);
+
 console.log('Static site prepared in dist/client');

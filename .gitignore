@@ -2,4 +2,5 @@
 .env.*.local
 .vercel/
 dist/
+node_modules/
 .trae/

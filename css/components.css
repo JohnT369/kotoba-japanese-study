@@ -3293,3 +3293,27 @@ body.is-edit-mode {
   .kana-practice-card__question { font-size: var(--fs-78); }
   .kana-mastery-grid { grid-template-columns: 1fr 1fr; }
 }
+
+/* ---------- Account ---------- */
+.auth-entry { position: fixed; z-index: 20; top: 16px; right: 20px; display: flex; align-items: center; gap: 7px; }
+.auth-entry__button, .auth-entry__signout { border: 1px solid #cddad7; border-radius: 999px; background: rgba(255,255,255,.94); color: var(--color-accent); box-shadow: var(--shadow-sm); font-size: var(--fs-12); }
+.auth-entry__button { max-width: 220px; padding: 8px 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.auth-entry__signout { padding: 7px 10px; color: var(--color-text-secondary); }
+.auth-entry__button:hover, .auth-entry__signout:hover { border-color: var(--color-accent); background: #f5faf9; }
+.auth-modal[hidden] { display: none; }
+.auth-modal { position: fixed; z-index: 50; inset: 0; display: grid; place-items: center; padding: 20px; }
+.auth-modal__backdrop { position: absolute; inset: 0; background: rgba(24, 36, 40, .46); backdrop-filter: blur(3px); }
+.auth-modal__panel { position: relative; width: min(100%, 420px); padding: 32px; border: 1px solid #d6e0de; border-radius: 24px; background: #fff; box-shadow: 0 24px 70px rgba(22, 43, 48, .25); }
+.auth-modal__close { position: absolute; top: 12px; right: 15px; width: 32px; height: 32px; border: 0; border-radius: 50%; background: #edf2f0; color: var(--color-text-secondary); font-size: 24px; line-height: 1; }
+.auth-modal__eyebrow { color: var(--color-red); font-size: var(--fs-11); font-weight: var(--fw-bold); letter-spacing: var(--tracking-wider); }
+.auth-modal h2 { margin: 6px 0 9px; font-size: var(--fs-25); }
+.auth-modal__intro { margin-bottom: 20px; color: var(--color-text-secondary); font-size: var(--fs-13); line-height: 1.6; }
+.auth-modal form { display: grid; gap: 13px; }
+.auth-modal label { display: grid; gap: 6px; color: var(--color-text-secondary); font-size: var(--fs-12); font-weight: var(--fw-bold); }
+.auth-modal input { width: 100%; padding: 10px 11px; border: 1px solid #c9d6d3; border-radius: 10px; background: #fff; color: var(--color-text); font: inherit; }
+.auth-modal input:focus { outline: 2px solid rgba(61, 116, 113, .25); border-color: var(--color-accent); }
+.auth-modal__message { min-height: 20px; margin: -2px 0 0; color: var(--color-success); font-size: var(--fs-12); line-height: 1.45; }
+.auth-modal__message.is-error { color: var(--color-error); }
+.auth-modal__toggle { display: block; margin: 15px auto 0; border: 0; background: transparent; color: var(--color-accent); font-size: var(--fs-13); text-decoration: underline; }
+@media (max-width: 860px) { .auth-entry { top: 12px; right: 14px; } }
+@media (max-width: 560px) { .auth-entry__button { max-width: 150px; } .auth-modal__panel { padding: 28px 22px; } }

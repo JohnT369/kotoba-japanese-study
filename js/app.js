@@ -11,6 +11,47 @@
   const LS_META_KEY = 'jp_learning_meta_v1';
   const LS_EDITS_KEY = 'jp_lesson_edits_v1';
   const LS_CUSTOM_LESSONS_KEY = 'jp_custom_lessons_v1';
+  const LS_ANONYMOUS_CLAIM_KEY = 'jp_kotoba_anonymous_storage_claimed_by';
+  let storageOwnerId = null;
+
+  function storageKey(baseKey) {
+    return storageOwnerId ? baseKey + ':' + storageOwnerId : baseKey;
+  }
+
+  function emitStateChange(type) {
+    window.dispatchEvent(new CustomEvent(type, { detail: { userId: storageOwnerId } }));
+  }
+
+  function writeStoredValue(baseKey, value) {
+    localStorage.setItem(storageKey(baseKey), JSON.stringify(value));
+  }
+
+  // 登录后把登录前仅存在于当前浏览器的资料归入首次登录的账户一次。
+  // 之后每个用户都使用独立的 localStorage 命名空间，切换账户不会串看到彼此资料。
+  function setStorageOwner(userId) {
+    const nextOwnerId = typeof userId === 'string' && userId ? userId : null;
+    if (nextOwnerId === storageOwnerId) return false;
+    storageOwnerId = nextOwnerId;
+    if (!storageOwnerId) return true;
+
+    try {
+      const claimedBy = localStorage.getItem(LS_ANONYMOUS_CLAIM_KEY);
+      if (!claimedBy) {
+        [LS_KEY, LS_META_KEY, LS_EDITS_KEY, LS_CUSTOM_LESSONS_KEY].forEach(function (baseKey) {
+          const legacy = localStorage.getItem(baseKey);
+          const scoped = localStorage.getItem(storageKey(baseKey));
+          if (legacy !== null && scoped === null) localStorage.setItem(storageKey(baseKey), legacy);
+          // Remove the shared legacy copy after its one-time account claim so
+          // a later account on this browser can never render another user's data.
+          if (legacy !== null) localStorage.removeItem(baseKey);
+        });
+        localStorage.setItem(LS_ANONYMOUS_CLAIM_KEY, storageOwnerId);
+      }
+    } catch (e) {
+      console.warn('切换账户本地资料失败:', e);
+    }
+    return true;
+  }
 
   // ---------- 工具函数 ----------
   function safeParseJSON(str, fallback) {
@@ -29,7 +70,7 @@
   // 用户在学习导航中新增的课时：与 lessons.js 原始课程分开保存，避免覆盖源码。
   function loadCustomLessons() {
     try {
-      const raw = localStorage.getItem(LS_CUSTOM_LESSONS_KEY);
+      const raw = localStorage.getItem(storageKey(LS_CUSTOM_LESSONS_KEY));
       const lessons = safeParseJSON(raw, []);
       return Array.isArray(lessons) ? lessons : [];
     } catch (e) {
@@ -39,7 +80,8 @@
 
   function saveCustomLessons(lessons) {
     try {
-      localStorage.setItem(LS_CUSTOM_LESSONS_KEY, JSON.stringify(lessons));
+      writeStoredValue(LS_CUSTOM_LESSONS_KEY, lessons);
+      emitStateChange('app:course-state-changed');
       return true;
     } catch (e) {
       return false;
@@ -50,7 +92,7 @@
   // 结构：{ [lessonId]: lessonObj（完整对象副本） }
   function loadAllEdits() {
     try {
-      const raw = localStorage.getItem(LS_EDITS_KEY);
+      const raw = localStorage.getItem(storageKey(LS_EDITS_KEY));
       return safeParseJSON(raw, {});
     } catch (e) {
       console.warn('读取编辑覆盖失败:', e);
@@ -60,7 +102,8 @@
 
   function saveAllEdits(edits) {
     try {
-      localStorage.setItem(LS_EDITS_KEY, JSON.stringify(edits));
+      writeStoredValue(LS_EDITS_KEY, edits);
+      emitStateChange('app:course-state-changed');
       return true;
     } catch (e) {
       console.warn('保存编辑覆盖失败:', e);
@@ -214,7 +257,7 @@
   // V2（新）：{ [id]: { status, startedAt?, lastVisitedAt?, completedAt? } }
   function loadProgress() {
     try {
-      const raw = localStorage.getItem(LS_KEY);
+      const raw = localStorage.getItem(storageKey(LS_KEY));
       return safeParseJSON(raw, {});
     } catch (e) {
       console.warn('读取进度失败:', e);
@@ -224,7 +267,8 @@
 
   function saveProgress(progress) {
     try {
-      localStorage.setItem(LS_KEY, JSON.stringify(progress));
+      writeStoredValue(LS_KEY, progress);
+      emitStateChange('app:progress-changed');
       return true;
     } catch (e) {
       console.warn('保存进度失败:', e);
@@ -313,8 +357,9 @@
 
   function resetProgress() {
     try {
-      localStorage.removeItem(LS_KEY);
-      localStorage.removeItem(LS_META_KEY);
+      localStorage.removeItem(storageKey(LS_KEY));
+      localStorage.removeItem(storageKey(LS_META_KEY));
+      emitStateChange('app:progress-changed');
       return true;
     } catch (e) {
       return false;
@@ -328,6 +373,33 @@
     const edits = loadAllEdits();
     const lessons = getLessons(); // getLessons 内部调 loadAllEdits 但 edits 已经缓存过没关系（LS 多次读同样 key，浏览器同一微任务同值，这里只求简单正确）
     return { lessons: lessons, progress: progress, edits: edits };
+  }
+
+  function getStorageSnapshot() {
+    return {
+      progress: loadProgress(),
+      customLessons: loadCustomLessons(),
+      lessonEdits: loadAllEdits()
+    };
+  }
+
+  function replaceStorageSnapshot(snapshot) {
+    if (!snapshot || typeof snapshot !== 'object') return false;
+    try {
+      if (snapshot.progress && typeof snapshot.progress === 'object' && !Array.isArray(snapshot.progress)) {
+        writeStoredValue(LS_KEY, snapshot.progress);
+      }
+      if (Array.isArray(snapshot.customLessons)) {
+        writeStoredValue(LS_CUSTOM_LESSONS_KEY, snapshot.customLessons);
+      }
+      if (snapshot.lessonEdits && typeof snapshot.lessonEdits === 'object' && !Array.isArray(snapshot.lessonEdits)) {
+        writeStoredValue(LS_EDITS_KEY, snapshot.lessonEdits);
+      }
+      return true;
+    } catch (e) {
+      console.warn('写入账户学习资料失败:', e);
+      return false;
+    }
   }
 
   // ---------- 统计 ----------
@@ -464,6 +536,10 @@
     loadProgress: loadProgress,
     getLessonCompletedAt: getLessonCompletedAt,
     migrateProgressV2: migrateProgressV2,
+    setStorageOwner: setStorageOwner,
+    getStorageOwner: function () { return storageOwnerId; },
+    getStorageSnapshot: getStorageSnapshot,
+    replaceStorageSnapshot: replaceStorageSnapshot,
 
     // 统计
     getStats: getStats,

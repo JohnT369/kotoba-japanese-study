@@ -3,10 +3,13 @@
   "private": true,
   "version": "1.0.0",
   "engines": {
-    "node": ">=20"
+    "node": ">=22"
   },
   "scripts": {
     "build": "node scripts/build-site.mjs",
     "dev": "vercel dev"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.112.4"
   }
 }
