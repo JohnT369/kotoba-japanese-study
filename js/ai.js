@@ -29,13 +29,16 @@
       return Promise.resolve({ ok: false, text: '', error: '未知任务类型：' + task, model: '', task: task });
     }
 
-    return fetch(API_ENDPOINT, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        task: task,
-        prompt: String(prompt || '')
-      })
+    const sessionPromise = window.KotobaAuth && window.KotobaAuth.client
+      ? window.KotobaAuth.client.auth.getSession()
+      : Promise.resolve({ data: { session: null } });
+    return sessionPromise.then(function (sessionResult) {
+      const token = sessionResult && sessionResult.data && sessionResult.data.session && sessionResult.data.session.access_token;
+      return fetch(API_ENDPOINT, {
+        method: 'POST',
+        headers: Object.assign({ 'Content-Type': 'application/json' }, token ? { Authorization: 'Bearer ' + token } : {}),
+        body: JSON.stringify({ task: task, prompt: String(prompt || '') })
+      });
     }).then(function (response) {
       return response.json().catch(function () { return {}; }).then(function (payload) {
         if (!response.ok || !payload.ok) {

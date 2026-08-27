@@ -18,6 +18,7 @@
   }
 
   function readStore(key) {
+    if (window.App && typeof window.App.getLearningStore === 'function') return window.App.getLearningStore(key, {});
     try {
       const data = JSON.parse(localStorage.getItem(key) || '{}');
       return data && typeof data === 'object' ? data : {};
@@ -25,7 +26,19 @@
   }
 
   function writeStore(key, value) {
+    if (window.App && typeof window.App.setLearningStore === 'function') return window.App.setLearningStore(key, value);
     try { localStorage.setItem(key, JSON.stringify(value)); return true; } catch (e) { return false; }
+  }
+
+  function recordReview(lesson, id, label, detail, correct) {
+    if (!window.App || typeof window.App.recordReviewItem !== 'function') return;
+    window.App.recordReviewItem({
+      id: 'lesson:' + lesson.id + ':' + id,
+      type: 'lesson',
+      label: label,
+      detail: detail,
+      href: 'lesson.html?id=' + encodeURIComponent(lesson.id)
+    }, correct);
   }
 
   function sourcePayload(lesson) {
@@ -285,7 +298,12 @@
       root.querySelectorAll('[data-practice-choice]').forEach(function (button) {
         button.addEventListener('click', function () {
           const parts = button.getAttribute('data-practice-choice').split(',');
-          updateProgress(lesson, record, function (progress) { progress.vocabulary[Number(parts[0])] = { selected: Number(parts[1]) }; });
+          const questionIndex = Number(parts[0]);
+          const selected = Number(parts[1]);
+          const question = record.data.vocabulary.questions[questionIndex];
+          const correct = question && selected === question.answerIndex;
+          updateProgress(lesson, record, function (progress) { progress.vocabulary[questionIndex] = { selected: selected }; });
+          if (question) recordReview(lesson, 'vocabulary:' + questionIndex, '词汇：' + question.prompt, correct ? '已答对，稍后复习巩固。' : '答错过一次，建议回到本课词汇表复习。', correct);
           replaceAll(lesson);
         });
       });
@@ -300,6 +318,7 @@
           if (!answer) { if (feedback) { feedback.textContent = '请先填写答案。'; feedback.className = 'practice-feedback is-wrong'; } return; }
           const correct = question.acceptedAnswers.some(function (item) { return normalizeText(item) === normalizeText(answer); });
           updateProgress(lesson, record, function (progress) { progress.goals[index] = { answer: answer, correct: correct }; });
+          recordReview(lesson, 'goal:' + index, '句型：' + question.sentenceTemplate, correct ? '已答对，按间隔复习巩固。' : '需要巩固本课句型填空。', correct);
           replaceAll(lesson);
         });
       });
@@ -373,6 +392,7 @@
             const checked = result.ok ? validateAssessment(result.data) : { ok: false, error: result.error };
             if (!checked.ok) { if (feedback) { feedback.textContent = 'AI 会话反馈失败：' + checked.error; feedback.className = 'practice-feedback is-wrong'; } button.disabled = false; button.textContent = 'AI 会话反馈'; return; }
             updateProgress(lesson, record, function (progress) { progress.dialogue[index] = { answer: answer, score: checked.data.score, feedback: checked.data.feedback, followUpLine: checked.data.nextPartnerLine, followUpReading: checked.data.nextPartnerReading, followUpCn: checked.data.nextPartnerCn }; });
+            recordReview(lesson, 'dialogue:' + index, '会话：' + item.situation, checked.data.score >= 70, checked.data.feedback || '回到本课应用会话复习。', checked.data.score >= 70);
             replaceAll(lesson);
           });
         });
@@ -380,5 +400,12 @@
     });
   }
 
-  window.Practice = { renderModule: renderModule, bind: bind, validate: validatePractice, getSourceHash: getSourceHash, getMastery: masteryFor };
+  function getLessonMastery(lesson) {
+    const record = getRecord(lesson);
+    const progress = getProgress(lesson, record);
+    const modules = ['vocabulary', 'goals', 'dialogue'].map(function (key) { return masteryFor(key, record, progress); });
+    return { generated: !!record, modules: modules, passed: modules.filter(function (item) { return item.state === 'passed'; }).length };
+  }
+
+  window.Practice = { renderModule: renderModule, bind: bind, validate: validatePractice, getSourceHash: getSourceHash, getMastery: masteryFor, getLessonMastery: getLessonMastery };
 })();

@@ -425,6 +425,7 @@
   const session = { round: 0, correct: 0, wrong: 0, answered: false, target: null, options: [], mode: 'recognize' };
 
   function readJSON(key, fallback) {
+    if (window.App && typeof window.App.getLearningStore === 'function' && key === STORAGE_KEY) return window.App.getLearningStore(key, fallback);
     try { const value = JSON.parse(localStorage.getItem(key) || ''); return value && typeof value === 'object' ? value : fallback; } catch (e) { return fallback; }
   }
   function loadStore() {
@@ -433,7 +434,10 @@
     const legacy = readJSON(LEGACY_KEY, {});
     return { scopes: legacy && typeof legacy === 'object' ? legacy : {}, characters: {} };
   }
-  function saveStore(store) { try { localStorage.setItem(STORAGE_KEY, JSON.stringify(store)); return true; } catch (e) { return false; } }
+  function saveStore(store) {
+    if (window.App && typeof window.App.setLearningStore === 'function') return window.App.setLearningStore(STORAGE_KEY, store);
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(store)); return true; } catch (e) { return false; }
+  }
   function scopeKey() { return state.type + ':' + state.group; }
   function charKey(item) { return state.type + ':' + state.group + ':' + item.kana; }
   function currentSet() { return (DATA[state.type] && DATA[state.type][state.group]) || []; }
@@ -458,6 +462,15 @@
     if (correct) detail.modes[mode].correct += 1;
     detail.lastSeen = new Date().toISOString();
     saveStore(store);
+    if (window.App && typeof window.App.recordReviewItem === 'function') {
+      window.App.recordReviewItem({
+        id: 'kana:' + key,
+        type: 'kana',
+        label: '假名：' + item.kana + '（' + item.romaji + '）',
+        detail: correct ? '已答对，按间隔计划复习。' : '曾答错，建议做一轮听辨或易混淆训练。',
+        href: 'kana.html'
+      }, correct);
+    }
   }
 
   function weakItems(set) {
@@ -572,7 +585,7 @@
     document.getElementById('btnKanaReplay').addEventListener('click', function () { if (session.target) speak(session.target.kana); });
     document.getElementById('kanaGrid').addEventListener('click', function (event) { const card = event.target.closest('[data-kana-study-index]'); if (!card) return; const item = currentSet()[Number(card.getAttribute('data-kana-study-index'))]; if (card.classList.contains('is-flipped')) speak(item.kana); else card.classList.add('is-flipped'); });
     document.getElementById('kanaWeakPanel').addEventListener('click', function (event) { if (event.target.closest('[data-kana-review-now]')) setMode('review'); });
-    document.getElementById('btnResetKanaStats').addEventListener('click', function () { if (!confirm('确定清除所有假名训练记录？')) return; localStorage.removeItem(STORAGE_KEY); localStorage.removeItem(LEGACY_KEY); session.round = 0; session.correct = 0; session.wrong = 0; renderPractice(); renderProgress(); });
+    document.getElementById('btnResetKanaStats').addEventListener('click', function () { if (!confirm('确定清除所有假名训练记录？')) return; if (window.App && window.App.deleteLearningStore) window.App.deleteLearningStore(STORAGE_KEY); else localStorage.removeItem(STORAGE_KEY); localStorage.removeItem(LEGACY_KEY); session.round = 0; session.correct = 0; session.wrong = 0; renderPractice(); renderProgress(); });
   }
   function init() { bind(); renderScope(); }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init); else init();

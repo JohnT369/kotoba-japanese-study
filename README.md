@@ -11,6 +11,8 @@
 ```text
 BAILIAN_API_KEY=你的百炼 API Key
 BAILIAN_BASE_URL=https://dashscope.aliyuncs.com/compatible-mode/v1
+SUPABASE_URL=https://你的项目.supabase.co
+SUPABASE_PUBLISHABLE_KEY=你的 Supabase publishable key
 ```
 
 `BAILIAN_API_KEY` 不得使用 `NEXT_PUBLIC_` 前缀，也不能写入 `data/`、`js/`、HTML 或 Git。
@@ -24,9 +26,10 @@ BAILIAN_BASE_URL=https://dashscope.aliyuncs.com/compatible-mode/v1
 - `profiles`：与 Supabase Auth 用户一一对应的个人资料；
 - `lesson_progress`：按用户隔离的课程状态和时间戳；
 - `user_course_state`：按用户隔离的自建课程和课程编辑留存；
+- `user_learning_state`：练习记录、假名掌握度和间隔复习计划；
 - 自动创建档案的触发器，以及仅允许用户访问自身数据的 RLS 策略。
 
-先后执行 [`20260827094500_create_learning_accounts.sql`](supabase/migrations/20260827094500_create_learning_accounts.sql) 与 [`20260827113000_add_user_course_content_state.sql`](supabase/migrations/20260827113000_add_user_course_content_state.sql)。所有这三类表均启用 RLS：登录用户只能读写自己的行。
+按时间顺序执行 `supabase/migrations/` 中的全部迁移。所有学习资料表均启用 RLS：登录用户只能读写自己的行。
 
 浏览器加载的 `js/supabase-config.js` 只包含项目 URL 和 **publishable key**；这是设计上可以公开的键，数据访问由 RLS 限制。不要在 Vercel 或前端文件中使用 Supabase 的 secret key 或 service role key。
 
@@ -53,7 +56,9 @@ npm run dev
 
 ```bash
 npm run build
+npm run validate:content
+npm test
 vercel
 ```
 
-先在 Preview 地址验证 AI 请求；确认后再执行 `vercel --prod`。当前函数包含输入长度限制和按 IP 的基础节流；正式开放多用户前，应接入登录系统及共享的 Redis 限流。
+先在 Preview 地址验证 AI 请求；确认后再执行 `vercel --prod`。AI 仅对登录用户开放：服务端验证登录令牌、限制每个账户每天 40 次调用，并保留短窗口节流。课程内容在 `data/lessons.js` 维护，并由构建前校验保护字段与课程 ID。

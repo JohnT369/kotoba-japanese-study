@@ -14,6 +14,7 @@
   let activeUser = null;
   let hydratedUserId = null;
   let syncing = false;
+  const queuedSync = { progress: false, course: false, learning: false };
   const isAuthPage = document.body.classList.contains('page-auth');
 
   function latestTimestamp(entry) {
@@ -51,6 +52,13 @@
 
   async function syncProgress() {
     if (!activeUser || syncing) return;
+    const resetAt = window.App.getProgressResetAt && window.App.getProgressResetAt();
+    if (resetAt) {
+      const { error } = await client.from('lesson_progress').delete().eq('user_id', activeUser.id);
+      if (error) { console.warn('清除云端学习进度失败:', error.message); return; }
+      window.App.clearProgressResetAt();
+      return;
+    }
     const rows = progressRows(activeUser.id, window.App.loadProgress());
     if (!rows.length) return;
     const { error } = await client.from('lesson_progress').upsert(rows, { onConflict: 'user_id,lesson_id' });
@@ -68,6 +76,27 @@
     if (error) console.warn('同步课程资料失败:', error.message);
   }
 
+  async function syncLearningState() {
+    if (!activeUser || syncing) return;
+    const snapshot = window.App.getLearningStateSnapshot();
+    const { error } = await client.from('user_learning_state').upsert({
+      user_id: activeUser.id,
+      state: snapshot
+    }, { onConflict: 'user_id' });
+    if (error) console.warn('同步练习与复习记录失败:', error.message);
+  }
+
+  function queueSync(kind) {
+    if (!Object.prototype.hasOwnProperty.call(queuedSync, kind) || queuedSync[kind]) return;
+    queuedSync[kind] = true;
+    window.setTimeout(function () {
+      queuedSync[kind] = false;
+      if (kind === 'progress') void syncProgress();
+      else if (kind === 'course') void syncCourseState();
+      else void syncLearningState();
+    }, 250);
+  }
+
   async function hydrateUser(user) {
     if (!user || hydratedUserId === user.id) return;
     hydratedUserId = user.id;
@@ -76,26 +105,37 @@
     syncing = true;
     try {
       const local = window.App.getStorageSnapshot();
-      const [progressResult, courseResult] = await Promise.all([
-        client.from('lesson_progress').select('lesson_id,status,started_at,last_visited_at,completed_at'),
-        client.from('user_course_state').select('custom_lessons,lesson_edits').maybeSingle()
+      const [progressResult, courseResult, learningResult] = await Promise.all([
+        client.from('lesson_progress').select('lesson_id,status,started_at,last_visited_at,completed_at,updated_at'),
+        client.from('user_course_state').select('custom_lessons,lesson_edits,updated_at').maybeSingle(),
+        client.from('user_learning_state').select('state,updated_at').maybeSingle()
       ]);
       if (progressResult.error) throw progressResult.error;
       if (courseResult.error) throw courseResult.error;
 
       const remoteCourse = courseResult.data;
+      const localCourseChangedAt = local.courseStateUpdatedAt || '';
+      const useRemoteCourse = remoteCourse && String(remoteCourse.updated_at || '') > localCourseChangedAt;
       const merged = {
-        progress: mergeProgress(local.progress, progressResult.data),
-        customLessons: remoteCourse && Array.isArray(remoteCourse.custom_lessons) ? remoteCourse.custom_lessons : local.customLessons,
-        lessonEdits: remoteCourse && remoteCourse.lesson_edits && typeof remoteCourse.lesson_edits === 'object' ? remoteCourse.lesson_edits : local.lessonEdits
+        progress: window.App.getProgressResetAt && window.App.getProgressResetAt() ? {} : mergeProgress(local.progress, progressResult.data),
+        customLessons: useRemoteCourse && Array.isArray(remoteCourse.custom_lessons) ? remoteCourse.custom_lessons : local.customLessons,
+        lessonEdits: useRemoteCourse && remoteCourse.lesson_edits && typeof remoteCourse.lesson_edits === 'object' ? remoteCourse.lesson_edits : local.lessonEdits,
+        courseStateUpdatedAt: useRemoteCourse ? remoteCourse.updated_at : localCourseChangedAt
       };
       window.App.replaceStorageSnapshot(merged);
+      if (!learningResult.error && learningResult.data && learningResult.data.state) {
+        const localLearning = window.App.getLearningStateSnapshot();
+        const remoteChangedAt = String(learningResult.data.updated_at || '');
+        if (remoteChangedAt > String(localLearning.updatedAt || '')) window.App.replaceLearningState(learningResult.data.state);
+      } else if (learningResult.error) {
+        console.warn('读取练习与复习记录失败:', learningResult.error.message);
+      }
     } catch (error) {
       console.warn('读取云端学习资料失败:', error.message || error);
     } finally {
       syncing = false;
     }
-    await Promise.all([syncProgress(), syncCourseState()]);
+    await Promise.all([syncProgress(), syncCourseState(), syncLearningState()]);
     window.dispatchEvent(new Event('app:state-synced'));
     if (isAuthPage) {
       window.location.replace('index.html');
@@ -225,8 +265,9 @@
     nav.appendChild(link);
   }
 
-  window.addEventListener('app:progress-changed', function () { void syncProgress(); });
-  window.addEventListener('app:course-state-changed', function () { void syncCourseState(); });
+  window.addEventListener('app:progress-changed', function () { queueSync('progress'); });
+  window.addEventListener('app:course-state-changed', function () { queueSync('course'); });
+  window.addEventListener('app:learning-state-changed', function () { queueSync('learning'); });
   client.auth.onAuthStateChange(function (_event, session) {
     window.setTimeout(function () {
       if (session && session.user) void hydrateUser(session.user);

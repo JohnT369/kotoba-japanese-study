@@ -13,7 +13,10 @@ const TASKS = {
 
 const WINDOW_MS = 10 * 60 * 1000;
 const MAX_REQUESTS_PER_WINDOW = 24;
+const DAILY_REQUEST_LIMIT = 40;
 const requestWindows = new Map();
+const SUPABASE_URL = String(process.env.SUPABASE_URL || 'https://ytvjyffirlqhmzysdffd.supabase.co').replace(/\/+$/, '');
+const SUPABASE_PUBLISHABLE_KEY = process.env.SUPABASE_PUBLISHABLE_KEY || 'sb_publishable_j-vIxJAfKLnTnZapn1ufRA_ppQo_ML1';
 
 function send(res, status, payload) {
   res.status(status).setHeader('Cache-Control', 'no-store').json(payload);
@@ -38,6 +41,33 @@ function isRateLimited(req) {
   return false;
 }
 
+async function getAuthenticatedUser(req) {
+  const authorization = String(req.headers.authorization || '');
+  const token = authorization.match(/^Bearer\s+(.+)$/i);
+  if (!token || !token[1]) return null;
+  try {
+    const response = await fetch(SUPABASE_URL + '/auth/v1/user', {
+      headers: { apikey: SUPABASE_PUBLISHABLE_KEY, Authorization: 'Bearer ' + token[1] },
+      signal: AbortSignal.timeout(5000)
+    });
+    if (!response.ok) return null;
+    const user = await response.json();
+    return user && user.id ? { id: String(user.id), token: token[1] } : null;
+  } catch (error) { return null; }
+}
+
+async function consumeDailyQuota(user) {
+  try {
+    const response = await fetch(SUPABASE_URL + '/rest/v1/rpc/consume_ai_quota', {
+      method: 'POST',
+      headers: { apikey: SUPABASE_PUBLISHABLE_KEY, Authorization: 'Bearer ' + user.token, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ max_requests: DAILY_REQUEST_LIMIT }),
+      signal: AbortSignal.timeout(5000)
+    });
+    return response.ok && await response.json() === true;
+  } catch (error) { return false; }
+}
+
 function systemPrompt(task) {
   const base = '你是一个日语学习助手，回答要简洁准确，必要时给出日语例句和读音（假名/罗马音）。用中文回答。';
   const prompts = {
@@ -59,14 +89,17 @@ function modelFor(task) {
 
 module.exports = async function handler(req, res) {
   if (req.method !== 'POST') return send(res, 405, { ok: false, error: '仅支持 POST 请求。' });
-  if (isRateLimited(req)) return send(res, 429, { ok: false, error: '请求过于频繁，请十分钟后再试。' });
-
   const body = req.body && typeof req.body === 'object' ? req.body : {};
   const task = String(body.task || '');
   const prompt = String(body.prompt || '').trim();
   if (!TASKS[task]) return send(res, 400, { ok: false, error: '不支持的 AI 任务。' });
   if (!prompt) return send(res, 400, { ok: false, error: '请输入需要处理的内容。' });
   if (prompt.length > 14000) return send(res, 413, { ok: false, error: '输入内容过长，请缩短后重试。' });
+
+  const user = await getAuthenticatedUser(req);
+  if (!user) return send(res, 401, { ok: false, error: '请登录后再使用 AI 助学。' });
+  if (isRateLimited(req)) return send(res, 429, { ok: false, error: '请求过于频繁，请十分钟后再试。' });
+  if (!await consumeDailyQuota(user)) return send(res, 429, { ok: false, error: '今日 AI 调用额度已用完，请明天再来。' });
 
   const apiKey = process.env.BAILIAN_API_KEY;
   if (!apiKey) return send(res, 503, { ok: false, error: 'AI 服务尚未配置，请联系站点管理员。' });
@@ -87,7 +120,8 @@ module.exports = async function handler(req, res) {
         messages: [{ role: 'system', content: systemPrompt(task) }, { role: 'user', content: prompt }],
         temperature: temperature,
         max_tokens: maxTokens
-      })
+      }),
+      signal: AbortSignal.timeout(25000)
     });
     const data = await upstream.json().catch(function () { return {}; });
     if (!upstream.ok) {

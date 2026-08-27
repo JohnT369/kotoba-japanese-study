@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>KOTOBA · 今日复习</title>
+  <link rel="stylesheet" href="css/global.css?v=4">
+  <link rel="stylesheet" href="css/components.css?v=4">
+</head>
+<body class="page-review">
+  <div class="layout">
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-header"><h1 class="logo">日本語</h1><p class="logo-sub">个人学习笔记</p></div>
+      <nav class="nav">
+        <a href="index.html" class="nav-item"><span class="nav-icon">◉</span><span>学习工作台</span></a>
+        <a href="courses.html" class="nav-item"><span class="nav-icon">▤</span><span>课程路线</span></a>
+        <a href="kana.html" class="nav-item"><span class="nav-icon">あ</span><span>假名练习</span></a>
+        <a href="review.html" class="nav-item active"><span class="nav-icon">↺</span><span>今日复习</span></a>
+        <a href="ai.html" class="nav-item"><span class="nav-icon">✦</span><span>智能助学</span></a>
+        <a href="progress.html" class="nav-item"><span class="nav-icon">◷</span><span>学习足迹</span></a>
+      </nav>
+      <div class="sidebar-footer"><p class="footer-text">每天一点日语<br>把表达变成习惯</p></div>
+    </aside>
+    <button class="menu-toggle" id="menuToggle" aria-label="菜单"><span></span><span></span><span></span></button>
+    <main class="main"><div class="content">
+      <section class="hero"><p class="home-eyebrow">SPACED REVIEW · 今日复习</p><h2 class="hero-title">把记得不牢的，<br>变成下次自然说出的。</h2><p class="hero-subtitle" id="reviewSummary">正在整理你的复习清单…</p></section>
+      <section class="section"><div id="reviewList" class="review-list"></div></section>
+    </div></main>
+  </div>
+  <script src="data/lessons.js"></script><script src="js/app.js?v=6"></script><script src="vendor/supabase.js"></script><script src="js/supabase-config.js"></script><script src="js/auth.js?v=2"></script>
+  <script>
+    (function () {
+      var list = document.getElementById('reviewList');
+      var summary = document.getElementById('reviewSummary');
+      var items = App.getDueReviewItems(20);
+      var stats = App.getReviewStats();
+      summary.textContent = items.length ? '今天有 ' + items.length + ' 项需要回顾；每次答对后，下一次复习会自动延后。' : '今天没有到期内容。继续完成课程或假名训练，系统会自动生成复习计划。';
+      if (!items.length) { list.innerHTML = '<div class="review-empty"><h3>复习清单已清空</h3><p>去学习一课或做一轮假名练习，薄弱项会自动回到这里。</p><a class="btn btn-primary" href="courses.html">继续学习 →</a></div>'; return; }
+      items.forEach(function (item) {
+        var card = document.createElement('article'); card.className = 'review-card';
+        var text = document.createElement('div');
+        var eyebrow = document.createElement('p'); eyebrow.className = 'review-card__type'; eyebrow.textContent = item.type === 'kana' ? '假名复习' : '课程复习';
+        var title = document.createElement('h3'); title.textContent = item.label;
+        var detail = document.createElement('p'); detail.textContent = item.detail || '回顾一次，让记忆更稳固。';
+        text.append(eyebrow, title, detail);
+        var action = document.createElement('a'); action.className = 'btn btn-primary btn-sm'; action.href = item.href || 'review.html'; action.textContent = '去复习 →';
+        card.append(text, action); list.appendChild(card);
+      });
+      if (!stats.total) list.textContent = '';
+    })();
+  </script>
+</body>
+</html>

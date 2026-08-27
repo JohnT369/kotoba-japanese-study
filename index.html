@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>KOTOBA · 学习工作台</title>
   <link rel="stylesheet" href="css/global.css?v=3">
-  <link rel="stylesheet" href="css/components.css?v=3">
+  <link rel="stylesheet" href="css/components.css?v=4">
 </head>
 <body class="page-home">
   <div class="layout">
@@ -27,6 +27,7 @@
           <span class="nav-icon">あ</span>
           <span>假名练习</span>
         </a>
+        <a href="review.html" class="nav-item" data-page="review"><span class="nav-icon">↺</span><span>今日复习</span></a>
         <a href="ai.html" class="nav-item" data-page="ai">
           <span class="nav-icon">✦</span>
           <span>智能助学</span>
@@ -81,6 +82,7 @@
           <div class="quick-grid">
             <a class="quick-card" href="courses.html"><span class="quick-card__icon">▤</span><h4>按路线学</h4><p>找到下一课，围绕词汇、句型和会话完成一次学习。</p><span class="quick-card__arrow">查看课程路线 →</span></a>
             <a class="quick-card" href="kana.html"><span class="quick-card__icon">あ</span><h4>练假名</h4><p>以翻卡与测试两种模式，巩固平假名和片假名。</p><span class="quick-card__arrow">开始假名练习 →</span></a>
+            <a class="quick-card" href="review.html"><span class="quick-card__icon">↺</span><h4>做复习</h4><p>把错题和已学内容按间隔安排，巩固得更牢。</p><span class="quick-card__arrow">打开今日复习 →</span></a>
             <a class="quick-card" href="ai.html"><span class="quick-card__icon">✦</span><h4>问 AI</h4><p>把不懂的语法、造句或翻译问题，变成即时反馈。</p><span class="quick-card__arrow">打开智能助学 →</span></a>
           </div>
         </section>
@@ -98,10 +100,10 @@
   </div>
 
   <script src="data/lessons.js"></script>
-  <script src="js/app.js"></script>
+  <script src="js/app.js?v=6"></script>
   <script src="vendor/supabase.js"></script>
   <script src="js/supabase-config.js"></script>
-  <script src="js/auth.js"></script>
+  <script src="js/auth.js?v=2"></script>
   <script>
     // 首页逻辑
     (function() {

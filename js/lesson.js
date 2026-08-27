@@ -1448,6 +1448,20 @@
       var module1 = renderVocabularyTable(lesson) + renderPractice('vocabulary');
       var module2 = renderLearningGoalsBlock(lesson) + renderPractice('goals');
       var module3 = renderDialogueBlock(lesson) + renderPractice('dialogue');
+      var mastery = window.Practice && typeof window.Practice.getLessonMastery === 'function'
+        ? window.Practice.getLessonMastery(lesson) : { generated: false, passed: 0 };
+      var completed = App.isLessonCompleted(lesson.id);
+      var completionNote = !mastery.generated
+        ? '完成本课后会进入下一课；也可以稍后生成配套练习。'
+        : mastery.passed === 3
+          ? '三组配套练习均已达标，可以安心进入下一课。'
+          : '已完成 ' + mastery.passed + ' / 3 组配套练习；可先标记完成，系统会把薄弱项排入复习。';
+      var completion =
+        '<section class="complete-section lesson-completion" aria-label="课程完成状态">' +
+          '<div><div class="complete-title">' + (completed ? '✓ 本课已完成' : '准备好结束这一课了吗？') + '</div>' +
+          '<div class="complete-sub">' + completionNote + '</div></div>' +
+          '<button type="button" class="btn ' + (completed ? 'btn-outline' : 'btn-primary') + '" data-lesson-complete ' + (completed ? 'disabled' : '') + '>' + (completed ? '已标记完成' : '完成这一课 →') + '</button>' +
+        '</section>';
 
       var panel = function (id, html) {
         var show = id === activeTab;
@@ -1461,7 +1475,8 @@
         tabBar,
         panel('1', module1),
         panel('2', module2),
-        panel('3', module3)
+        panel('3', module3),
+        completion
       ];
     }
 
@@ -2195,6 +2210,24 @@
     const practiceLesson = App.getLessonById(lessonId);
     if (practiceLesson && window.Practice && typeof window.Practice.bind === 'function') {
       window.Practice.bind(practiceLesson);
+    }
+
+    const completeButton = document.querySelector('[data-lesson-complete]');
+    if (completeButton && !completeButton.disabled) {
+      completeButton.addEventListener('click', function () {
+        const currentLesson = App.getLessonById(lessonId);
+        if (!currentLesson) return;
+        App.markLessonCompleted(lessonId);
+        if (window.App && typeof window.App.recordReviewItem === 'function') {
+          window.App.recordReviewItem({
+            id: 'lesson:' + lessonId + ':summary', type: 'lesson', label: '复习：' + currentLesson.title,
+            detail: '回顾本课词汇、句型和应用会话。', href: 'lesson.html?id=' + encodeURIComponent(lessonId)
+          }, true);
+        }
+        renderLesson(currentLesson);
+        bindInteractions(lessonId);
+        bindReadToolbar(lessonId);
+      });
     }
   }
 

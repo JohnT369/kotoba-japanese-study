@@ -7,7 +7,9 @@
   },
   "scripts": {
     "build": "node scripts/build-site.mjs",
-    "dev": "vercel dev"
+    "dev": "vercel dev",
+    "validate:content": "node scripts/validate-content.mjs",
+    "test": "node --test"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.112.4"

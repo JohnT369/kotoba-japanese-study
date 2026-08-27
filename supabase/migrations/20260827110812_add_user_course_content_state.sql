@@ -22,4 +22,4 @@ drop policy if exists "Users manage only their own course state" on public.user_
 create policy "Users manage only their own course state"
   on public.user_course_state for all to authenticated
   using ((select auth.uid()) = user_id)
-  with check ((select auth.uid()) = user_id);
+  with check ((select auth.uid()) = user_id);;
