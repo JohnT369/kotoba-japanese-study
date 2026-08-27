@@ -4,6 +4,7 @@
 const http = require('http');
 const fs = require('fs');
 const path = require('path');
+const aiHandler = require('./api/ai.js');
 
 const assetRoot = path.resolve(process.cwd(), 'dist', 'client');
 const contentTypes = {
@@ -24,7 +25,47 @@ function send(res, status, body) {
   res.end(body);
 }
 
+function prepareFunctionResponse(res) {
+  res.status = function status(code) {
+    res.statusCode = code;
+    return res;
+  };
+  res.json = function json(payload) {
+    if (!res.hasHeader('Content-Type')) {
+      res.setHeader('Content-Type', 'application/json; charset=utf-8');
+    }
+    res.end(JSON.stringify(payload));
+  };
+}
+
+function handleAi(req, res) {
+  prepareFunctionResponse(res);
+  if (req.method !== 'POST') return aiHandler(req, res);
+
+  let rawBody = '';
+  req.setEncoding('utf8');
+  req.on('data', (chunk) => {
+    rawBody += chunk;
+    if (rawBody.length > 1024 * 1024) req.destroy();
+  });
+  req.on('end', () => {
+    try {
+      req.body = rawBody ? JSON.parse(rawBody) : {};
+    } catch {
+      req.body = {};
+    }
+    Promise.resolve(aiHandler(req, res)).catch((error) => {
+      console.error('AI handler failed', error);
+      if (!res.writableEnded) send(res, 500, 'Internal Server Error');
+    });
+  });
+}
+
 const server = http.createServer((req, res) => {
+  if (new URL(req.url, 'http://localhost').pathname === '/api/ai') {
+    return handleAi(req, res);
+  }
+
   if (req.method !== 'GET' && req.method !== 'HEAD') {
     res.setHeader('Allow', 'GET, HEAD');
     return send(res, 405, 'Method Not Allowed');

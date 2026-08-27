@@ -9,9 +9,5 @@
     "api/ai.js": {
       "maxDuration": 30
     }
-  },
-  "routes": [
-    { "src": "/api/ai", "dest": "/api/ai.js" },
-    { "src": "/(.*)", "dest": "/server.js" }
-  ]
+  }
 }
