@@ -17,6 +17,23 @@ BAILIAN_BASE_URL=https://dashscope.aliyuncs.com/compatible-mode/v1
 
 可选地设置 `AI_MODEL_LESSON_PRACTICE`、`AI_MODEL_VOICE_DIALOGUE` 等变量覆盖单项模型；未设置时使用应用内置分流。
 
+## Supabase 登录与学习进度
+
+数据库结构保存在 [`supabase/migrations/20260827094500_create_learning_accounts.sql`](supabase/migrations/20260827094500_create_learning_accounts.sql)。它创建：
+
+- `profiles`：与 Supabase Auth 用户一一对应的个人资料；
+- `lesson_progress`：按用户隔离的课程状态和时间戳；
+- 自动创建档案的触发器，以及仅允许用户访问自身数据的 RLS 策略。
+
+首次初始化时，在 Supabase Dashboard → SQL Editor → New query 中粘贴并执行该文件的全部内容。之后在 Vercel 的 Production、Preview 和 Development 环境中配置：
+
+```text
+SUPABASE_URL=https://你的项目.supabase.co
+SUPABASE_PUBLISHABLE_KEY=sb_publishable_...
+```
+
+`SUPABASE_PUBLISHABLE_KEY` 只可配合 RLS 在浏览器中使用；不要将 Supabase 的 secret key 或 service role key 写入任何前端文件。
+
 ### 本地开发
 
 ```bash
