@@ -178,8 +178,6 @@
       if (!activeUser) window.location.href = 'login.html';
     });
     entry.appendChild(button);
-    const sidebarEntry = document.getElementById('authSidebarEntry');
-    if (sidebarEntry) sidebarEntry.hidden = !!activeUser;
     if (activeUser) {
       const signOut = document.createElement('button');
       signOut.type = 'button';
@@ -255,18 +253,6 @@
     renderAccount();
   }
 
-  function mountSidebarEntry() {
-    if (isAuthPage) return;
-    const nav = document.querySelector('.sidebar .nav');
-    if (!nav) return;
-    const link = document.createElement('a');
-    link.id = 'authSidebarEntry';
-    link.className = 'nav-item auth-sidebar-entry';
-    link.href = 'login.html';
-    link.innerHTML = '<span class="nav-icon">◌</span><span>登录 / 注册</span>';
-    nav.appendChild(link);
-  }
-
   window.addEventListener('app:progress-changed', function () { queueSync('progress'); });
   window.addEventListener('app:course-state-changed', function () { queueSync('course'); });
   window.addEventListener('app:learning-state-changed', function () { queueSync('learning'); });
@@ -287,13 +273,11 @@
         return;
       }
       mountAuthUI();
-      mountSidebarEntry();
       if (user) return hydrateUser(user);
       renderAccount();
     }).catch(function () {
       // 会话读取失败时仍允许用户以普通登录模式继续。
       mountAuthUI();
-      mountSidebarEntry();
       renderAccount();
     });
   }

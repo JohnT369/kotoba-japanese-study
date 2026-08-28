@@ -25,10 +25,11 @@ test('lesson completion is connected to the learning page', async () => {
   assert.match(source, /App\.markLessonCompleted\(lessonId\)/);
 });
 
-test('authenticated visitors bypass the login modal and sidebar login link', async () => {
+test('authenticated visitors bypass the login modal and use only the account entry', async () => {
   const source = await readFile('js/auth.js', 'utf8');
   assert.match(source, /if \(isAuthPage && user\) \{/);
-  assert.match(source, /sidebarEntry\.hidden = !!activeUser/);
+  assert.match(source, /entry\.id = 'authEntry'/);
+  assert.doesNotMatch(source, /authSidebarEntry|mountSidebarEntry/);
 });
 
 test('course card counts edited content and keeps the summary compact', async () => {
