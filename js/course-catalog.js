@@ -9,12 +9,6 @@
 (function () {
   'use strict';
 
-  const CIRCLED_G = ['①','②','③','④','⑤','⑥','⑦','⑧','⑨','⑩','⑪','⑫','⑬','⑭','⑮','⑯','⑰','⑱','⑲','⑳'];
-  function gMark(i) {
-    if (i < CIRCLED_G.length) return CIRCLED_G[i];
-    return '(' + (i + 1) + ')';
-  }
-
   function escapeHTML(str) {
     if (str == null) return '';
     return String(str)
@@ -42,9 +36,6 @@
     const nVocab = Array.isArray(lesson.vocabulary) ? lesson.vocabulary.length : 0;
     const nPhrases = Array.isArray(lesson.phrases) ? lesson.phrases.length : 0;
     const nGoals = Array.isArray(lesson.learningGoals) ? lesson.learningGoals.length : 0;
-    const grammarTagsTop2 = Array.isArray(lesson.grammar)
-      ? lesson.grammar.slice(0, 2).map(function (g) { return g ? g.pattern : null; }).filter(Boolean)
-      : [];
     const dayDisplay = '第' + (seq != null ? Number(seq) : '') + '课';
     return {
       dayDisplay: dayDisplay,
@@ -54,8 +45,7 @@
       estimatedMinutes: typeof lesson.estimatedMinutes === 'number' ? lesson.estimatedMinutes : undefined,
       nVocab: nVocab,
       nPhrases: nPhrases,
-      nGoals: nGoals,
-      grammarTagsTop2: grammarTagsTop2
+      nGoals: nGoals
     };
   }
 
@@ -155,12 +145,6 @@
     const lesson = item.lesson;
     const url = item.url;
 
-    const grammarTags = s.grammarTagsTop2.length > 0
-      ? '<div class="course-grammar course-grammar__tags">' +
-        s.grammarTagsTop2.map(function (p) { return '<span class="course-grammar__tag">语法：' + escapeHTML(p) + '</span>'; }).join('') +
-        '</div>'
-      : '';
-
     const meta = (s.nVocab + s.nPhrases + s.nGoals) > 0
       ? '<div class="course-card__meta">' +
           '<span class="cs-pill cs-vocab">📘 ' + s.nVocab + ' 词</span>' +
@@ -168,25 +152,6 @@
           '<span class="cs-pill cs-goal">🎯 ' + s.nGoals + ' 目标</span>' +
         '</div>'
       : '';
-
-    // details：学习目标（默认折叠）
-    const goals = Array.isArray(lesson.learningGoals) ? lesson.learningGoals : [];
-    let goalsDetails = '';
-    if (goals.length > 0) {
-      const rows = goals.map(function (g, gi) {
-        return (
-          '<div class="cc-goal-row">' +
-            '<span class="cc-goal-num">' + gMark(gi) + '</span>' +
-            '<span class="cc-goal-title">' + escapeHTML(g.goalTitle || '') + '</span>' +
-          '</div>'
-        );
-      }).join('');
-      goalsDetails =
-        '<details class="course-card__goals-details">' +
-          '<summary>▸ 查看本课 ' + goals.length + ' 个学习目标</summary>' +
-          '<div class="cc-goals-list">' + rows + '</div>' +
-        '</details>';
-    }
 
     const statusCls =
       (st.isCompleted ? ' is-completed' : '') +
@@ -210,11 +175,9 @@
           '<div class="course-title-row"><h3 class="course-title">' + escapeHTML(lesson.title || '') + '</h3>' +
           '<button type="button" class="btn btn-outline btn-sm course-card__title-edit" data-cc-title-edit aria-label="编辑课程名称">编辑名称</button></div>' +
           '<p class="course-sub">' + escapeHTML(lesson.subtitle || '') + '</p>' +
-          grammarTags +
         '</div>' +
         titleEditor +
         meta +
-        goalsDetails +
         '<div class="course-card__actions">' +
           '<a href="' + url + '" class="btn ' + st.ctaVariant + ' btn-sm course-card__cta">' + st.ctaText + '</a>' +
         '</div>' +

@@ -174,10 +174,12 @@
     });
     // 旧 V1 schema 时，强制把新 3 大模块拉回磁盘版（因为用户根本没在编辑模式下编辑过这些新字段）
     if (isOld) {
-      if (original.vocabulary && original.vocabulary.length) base.vocabulary = original.vocabulary;
-      if (original.phrases) base.phrases = original.phrases;
-      if (original.learningGoals) base.learningGoals = original.learningGoals;
-      if (original.dialogue) base.dialogue = original.dialogue;
+      // 旧版覆盖记录可能只缺少某些新模块。只为“缺失的字段”补原版，
+      // 不能覆盖用户已经保存的词汇、短语或学习目标，否则目录统计会停留在原始数量。
+      if (!Array.isArray(editCopy.vocabulary) && original.vocabulary) base.vocabulary = original.vocabulary;
+      if (!Array.isArray(editCopy.phrases) && original.phrases) base.phrases = original.phrases;
+      if (!Array.isArray(editCopy.learningGoals) && original.learningGoals) base.learningGoals = original.learningGoals;
+      if ((!editCopy.dialogue || !Array.isArray(editCopy.dialogue.lines)) && original.dialogue) base.dialogue = original.dialogue;
     }
     // ===== 清理教材残留字段（旧 LocalStorage 覆盖版可能还存着 mp3s/mp3/page；主动清除避免残留）=====
     delete base.mp3s;

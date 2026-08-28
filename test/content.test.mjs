@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { readFile } from 'node:fs/promises';
+import vm from 'node:vm';
 
 const exec = promisify(execFile);
 
@@ -28,4 +29,22 @@ test('authenticated visitors bypass the login modal and sidebar login link', asy
   const source = await readFile('js/auth.js', 'utf8');
   assert.match(source, /if \(isAuthPage && user\) \{/);
   assert.match(source, /sidebarEntry\.hidden = !!activeUser/);
+});
+
+test('course card counts edited content and keeps the summary compact', async () => {
+  const source = await readFile('js/course-catalog.js', 'utf8');
+  const context = { window: {} };
+  vm.runInNewContext(source, context);
+  const lesson = {
+    id: 'lesson-edited', sequence: 1, title: '已编辑课时', subtitle: '统计应来自当前内容',
+    vocabulary: [{ word: '私' }, { word: 'あなた' }, { word: '学生' }],
+    phrases: [{ phrase: 'はじめまして' }],
+    learningGoals: [{ goalTitle: '自我介绍' }, { goalTitle: '提问' }],
+    grammar: [{ pattern: 'A は B です' }]
+  };
+  const items = context.window.CourseCatalog.buildCatalogItems([lesson], {}, { 'lesson-edited': lesson });
+  const html = context.window.CourseCatalog.buildCourseList({ items }).html;
+  assert.match(html, /📘 3 词/);
+  assert.match(html, /🎯 2 目标/);
+  assert.doesNotMatch(html, /语法：|查看本课/);
 });
