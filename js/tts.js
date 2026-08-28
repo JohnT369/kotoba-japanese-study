@@ -16,10 +16,10 @@
 (function () {
   'use strict';
 
-  // 本机开发可使用 Python Edge TTS 代理；线上部署时直接降级至浏览器语音，
-  // 避免公开站点向访问者本机的 localhost 发送无效请求。
+  // 本机开发沿用 Python Edge TTS 代理；生产环境改由同源服务端代理合成，
+  // 浏览器只接收 MP3，避免 Edge 服务要求的 WebSocket 请求头受浏览器限制。
   const IS_LOCAL = /^(localhost|127\.0\.0\.1)$/i.test(window.location.hostname);
-  const EDGE_TTS_PROXY = IS_LOCAL ? 'http://localhost:3001' : '';
+  const EDGE_TTS_PROXY = IS_LOCAL ? 'http://localhost:3001' : window.location.origin;
   const EDGE_TIMEOUT = 5000;
 
   let currentEngine = 'auto';
@@ -37,14 +37,11 @@
 
   async function checkEdgeTTS() {
     if (edgeAvailable !== null) return edgeAvailable;
-    if (!EDGE_TTS_PROXY) {
-      edgeAvailable = false;
-      return false;
-    }
     try {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), EDGE_TIMEOUT);
-      const res = await fetch(EDGE_TTS_PROXY + '/health', { signal: controller.signal });
+      const healthUrl = IS_LOCAL ? EDGE_TTS_PROXY + '/health' : EDGE_TTS_PROXY + '/api/tts?health=1';
+      const res = await fetch(healthUrl, { signal: controller.signal });
       clearTimeout(timeoutId);
       edgeAvailable = res.ok;
     } catch (e) {
@@ -55,9 +52,9 @@
 
   async function speakWithEdge(text, opts) {
     const voice = opts.voice || currentEdgeVoice;
-    const rate = opts.rate != null ? opts.rate : 'default';
-    const pitch = opts.pitch != null ? opts.pitch : 'default';
-    const volume = opts.volume != null ? opts.volume : 'default';
+    const rate = edgeRate(opts.rate);
+    const pitch = edgePitch(opts.pitch);
+    const volume = edgeVolume(opts.volume);
 
     const url = `${EDGE_TTS_PROXY}/api/tts?text=${encodeURIComponent(text)}&voice=${voice}&rate=${rate}&pitch=${pitch}&volume=${volume}`;
 
@@ -107,6 +104,21 @@
       edgeAvailable = false;
       return false;
     }
+  }
+
+  function edgeRate(value) {
+    if (typeof value === 'number' && Number.isFinite(value)) return Math.round((value - 1) * 100) + '%';
+    return /^[+-]\d{1,3}%$/.test(String(value || '')) ? String(value) : 'default';
+  }
+
+  function edgePitch(value) {
+    if (typeof value === 'number' && Number.isFinite(value)) return Math.round((value - 1) * 10) + 'Hz';
+    return /^[+-]\d{1,3}Hz$/.test(String(value || '')) ? String(value) : 'default';
+  }
+
+  function edgeVolume(value) {
+    if (typeof value === 'number' && Number.isFinite(value)) return Math.round((value - 1) * 100) + '%';
+    return /^[+-]\d{1,3}%$/.test(String(value || '')) ? String(value) : 'default';
   }
 
   function speakWithWebSpeech(text, opts) {
@@ -195,7 +207,7 @@
     currentEngine = engine;
     if (engine === 'edge') {
       checkEdgeTTS().then(function (ok) {
-        if (!ok) console.warn('Edge TTS 代理未启动，请运行: node server.js');
+        if (!ok) console.warn('Edge TTS 服务暂时不可用，将使用浏览器朗读。');
       });
     }
   }
@@ -221,7 +233,7 @@
   }
 
   async function getEdgeVoices() {
-    if (!EDGE_TTS_PROXY) return [];
+    if (!IS_LOCAL) return window.TTS.EDGE_VOICES;
     try {
       const res = await fetch(EDGE_TTS_PROXY + '/api/voices');
       if (res.ok) return await res.json();
@@ -262,8 +274,7 @@
     if (ok) {
       console.log('%c[Edge TTS] 已连接神经语音服务', 'color:#10b981;font-weight:bold');
     } else {
-      console.log('%c[Edge TTS] 代理未启动，降级到 Web Speech API', 'color:#f59e0b');
-      console.log('  运行命令: node server.js');
+      console.log('%c[Edge TTS] 服务暂时不可用，降级到 Web Speech API', 'color:#f59e0b');
     }
   });
 })();

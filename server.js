@@ -5,6 +5,7 @@ const http = require('http');
 const fs = require('fs');
 const path = require('path');
 const aiHandler = require('./api/ai.js');
+const ttsHandler = require('./api/tts.js');
 
 const assetRoot = path.resolve(process.cwd(), 'dist', 'client');
 const contentTypes = {
@@ -61,10 +62,20 @@ function handleAi(req, res) {
   });
 }
 
+function handleTts(req, res) {
+  prepareFunctionResponse(res);
+  Promise.resolve(ttsHandler(req, res)).catch((error) => {
+    console.error('TTS handler failed', error);
+    if (!res.writableEnded) send(res, 500, 'Internal Server Error');
+  });
+}
+
 const server = http.createServer((req, res) => {
-  if (new URL(req.url, 'http://localhost').pathname === '/api/ai') {
+  const requestPath = new URL(req.url, 'http://localhost').pathname;
+  if (requestPath === '/api/ai') {
     return handleAi(req, res);
   }
+  if (requestPath === '/api/tts') return handleTts(req, res);
 
   if (req.method !== 'GET' && req.method !== 'HEAD') {
     res.setHeader('Allow', 'GET, HEAD');

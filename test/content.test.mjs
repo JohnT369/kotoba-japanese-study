@@ -19,6 +19,16 @@ test('AI endpoint requires identity and durable quota', async () => {
   assert.match(source, /请登录后再使用 AI 助学/);
 });
 
+test('production speech uses the Edge Neural server proxy', async () => {
+  const client = await readFile('js/tts.js', 'utf8');
+  const handler = await readFile('api/tts.js', 'utf8');
+  assert.match(client, /window\.location\.origin/);
+  assert.match(client, /\/api\/tts\?health=1/);
+  assert.match(handler, /new EdgeTTS/);
+  assert.match(handler, /ja-JP-NanamiNeural/);
+  assert.match(handler, /MAX_REQUESTS_PER_WINDOW/);
+});
+
 test('lesson completion is connected to the learning page', async () => {
   const source = await readFile('js/lesson.js', 'utf8');
   assert.match(source, /data-lesson-complete/);

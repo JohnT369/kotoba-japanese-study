@@ -12,6 +12,7 @@
     "test": "node --test"
   },
   "dependencies": {
-    "@supabase/supabase-js": "^2.112.4"
+    "@supabase/supabase-js": "^2.112.4",
+    "node-edge-tts": "1.2.10"
   }
 }
