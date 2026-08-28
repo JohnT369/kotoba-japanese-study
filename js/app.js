@@ -264,6 +264,72 @@
     return saveLessonEdit(lessonId, next);
   }
 
+  // ---------- 课时归档与删除 ----------
+  // 归档标记与编辑覆盖一起同步，避免为一个轻量的个人视图状态增加新的云端表字段。
+  const ARCHIVED_LESSONS_KEY = '__archivedLessonIds';
+
+  function archivedLessonIds(edits) {
+    const source = edits && edits[ARCHIVED_LESSONS_KEY];
+    return source && typeof source === 'object' && !Array.isArray(source) ? source : {};
+  }
+
+  function isLessonArchived(lessonId, editsOverride) {
+    if (!lessonId) return false;
+    const edits = editsOverride || loadAllEdits();
+    return !!archivedLessonIds(edits)[lessonId];
+  }
+
+  function setLessonArchived(lessonId, archived) {
+    if (!lessonId || !getLessonOriginalById(lessonId)) return false;
+    const edits = loadAllEdits();
+    const archivedIds = archivedLessonIds(edits);
+    if (archived) archivedIds[lessonId] = new Date().toISOString();
+    else delete archivedIds[lessonId];
+    if (Object.keys(archivedIds).length) edits[ARCHIVED_LESSONS_KEY] = archivedIds;
+    else delete edits[ARCHIVED_LESSONS_KEY];
+    return saveAllEdits(edits);
+  }
+
+  function isCustomLesson(lessonId) {
+    return loadCustomLessons().some(function (lesson) { return lesson && lesson.id === lessonId; });
+  }
+
+  function purgeLessonLearningRecords(lessonId) {
+    const state = loadLearningState();
+    [
+      'jp_lesson_practice_v1', 'jp_lesson_practice_progress_v1',
+      'jp_lesson_vocabulary_training_v1', 'jp_lesson_vocabulary_training_progress_v1'
+    ].forEach(function (key) {
+      if (state[key] && typeof state[key] === 'object') delete state[key][lessonId];
+    });
+    if (state.review && state.review.items && typeof state.review.items === 'object') {
+      const prefix = 'lesson:' + lessonId + ':';
+      Object.keys(state.review.items).forEach(function (key) {
+        if (key.indexOf(prefix) === 0) delete state.review.items[key];
+      });
+    }
+    return saveLearningState(state);
+  }
+
+  // 只有自建课时允许永久删除；预置教材始终使用归档，防止误删课程源内容。
+  function deleteCustomLesson(lessonId) {
+    if (!isCustomLesson(lessonId)) return false;
+    const customLessons = loadCustomLessons().filter(function (lesson) { return lesson && lesson.id !== lessonId; });
+    const edits = loadAllEdits();
+    delete edits[lessonId];
+    const archivedIds = archivedLessonIds(edits);
+    delete archivedIds[lessonId];
+    if (Object.keys(archivedIds).length) edits[ARCHIVED_LESSONS_KEY] = archivedIds;
+    else delete edits[ARCHIVED_LESSONS_KEY];
+    const progress = loadProgress();
+    delete progress[lessonId];
+
+    const courseSaved = saveCustomLessons(customLessons) && saveAllEdits(edits);
+    const progressSaved = saveProgress(progress);
+    const learningSaved = purgeLessonLearningRecords(lessonId);
+    return courseSaved && progressSaved && learningSaved;
+  }
+
   // ---------- 进度读写（V2 三元结构：status ∈ {not_started, in_progress, completed}）----------
   // V1（兼容）：{ [id]: { completed: boolean, completedAt: string } }
   // V2（新）：{ [id]: { status, startedAt?, lastVisitedAt?, completedAt? } }
@@ -419,7 +485,8 @@
 
   // ---------- 统计 ----------
   function getStats() {
-    const lessons = getLessons();
+    const archived = archivedLessonIds(loadAllEdits());
+    const lessons = getLessons().filter(function (lesson) { return !archived[lesson.id]; });
     const total = lessons.length;
     migrateProgressV2();
     const progress = loadProgress();
@@ -445,15 +512,16 @@
   // ---------- 下一课 / "继续学习"推荐 ----------
   // 优先级：(1) in_progress 中 lastVisitedAt 最新 → (2) 首个 not_started → (3) 已完成中最老的（便于复习）
   function getNextLesson() {
-    const { lessons, progress } = loadAllOnce();
-    if (lessons.length === 0) return null;
+    const { lessons, progress, edits } = loadAllOnce();
+    const activeLessons = lessons.filter(function (lesson) { return !isLessonArchived(lesson.id, edits); });
+    if (activeLessons.length === 0) return null;
     let bestInProgress = null;
     let bestInProgressTime = '';
     let firstNotStarted = null;
     let oldestCompleted = null;
     let oldestCompletedTime = '9999-12-31T23:59:59.999Z';
-    for (let i = 0; i < lessons.length; i++) {
-      const l = lessons[i];
+    for (let i = 0; i < activeLessons.length; i++) {
+      const l = activeLessons[i];
       const e = getProgressEntry(l.id, progress);
       if (e.status === 'in_progress') {
         const t = e.lastVisitedAt || '';
@@ -471,7 +539,7 @@
         }
       }
     }
-    return bestInProgress || firstNotStarted || oldestCompleted || lessons[0];
+    return bestInProgress || firstNotStarted || oldestCompleted || activeLessons[0];
   }
 
   // ---------- 按 ID 获取课程 ----------
@@ -493,8 +561,10 @@
   }
 
   function getAdjacentLessons(id) {
-    const idx = getLessonIndex(id);
-    const lessons = getLessons();
+    const allLessons = getLessons();
+    const archived = archivedLessonIds(loadAllEdits());
+    const lessons = allLessons.filter(function (lesson) { return !archived[lesson.id]; });
+    const idx = lessons.findIndex(function (lesson) { return lesson.id === id; });
     return {
       prev: idx > 0 ? lessons[idx - 1] : null,
       next: idx >= 0 && idx < lessons.length - 1 ? lessons[idx + 1] : null
@@ -699,6 +769,10 @@
     // 课程管理（学习导航）
     createLesson: createLesson,
     updateLessonMeta: updateLessonMeta,
+    isCustomLesson: isCustomLesson,
+    isLessonArchived: isLessonArchived,
+    setLessonArchived: setLessonArchived,
+    deleteCustomLesson: deleteCustomLesson,
 
     // 课程编辑（LocalStorage 覆盖）
     hasLessonEdit: hasLessonEdit,

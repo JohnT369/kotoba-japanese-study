@@ -62,6 +62,34 @@ test('course card counts edited content and keeps the summary compact', async ()
   assert.doesNotMatch(html, /语法：|查看本课/);
 });
 
+test('archived lessons leave the default route and remain recoverable', async () => {
+  const source = await readFile('js/course-catalog.js', 'utf8');
+  const context = { window: { App: { isCustomLesson: () => false } } };
+  vm.runInNewContext(source, context);
+  const lessons = [
+    { id: 'active', sequence: 1, title: '正在学习', vocabulary: [], phrases: [], learningGoals: [] },
+    { id: 'archived', sequence: 2, title: '已归档课时', vocabulary: [], phrases: [], learningGoals: [] }
+  ];
+  const items = context.window.CourseCatalog.buildCatalogItems(lessons, {}, { __archivedLessonIds: { archived: '2026-08-28T00:00:00.000Z' } });
+  const active = context.window.CourseCatalog.buildCourseList({ items, tabFilter: 'all' });
+  const archived = context.window.CourseCatalog.buildCourseList({ items, tabFilter: 'archived' });
+  assert.match(active.html, /正在学习/);
+  assert.doesNotMatch(active.html, /已归档课时/);
+  assert.equal(active.tabCounts.archived, 1);
+  assert.match(archived.html, /已归档课时/);
+  assert.match(archived.html, /恢复课时/);
+  assert.equal(context.window.CourseCatalog.getNextContinueItem(items).id, 'active');
+});
+
+test('lesson management keeps preset lessons recoverable and purges deleted custom records', async () => {
+  const source = await readFile('js/app.js', 'utf8');
+  assert.match(source, /const ARCHIVED_LESSONS_KEY = '__archivedLessonIds'/);
+  assert.match(source, /function setLessonArchived/);
+  assert.match(source, /function deleteCustomLesson/);
+  assert.match(source, /function purgeLessonLearningRecords/);
+  assert.match(source, /只有自建课时允许永久删除/);
+});
+
 test('practice CTA uses concise generation copy', async () => {
   const source = await readFile('js/practice.js', 'utf8');
   assert.match(source, /'生成练习'/);

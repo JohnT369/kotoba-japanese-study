@@ -62,6 +62,7 @@
     const isCompleted = status === 'completed';
     const isInProgress = status === 'in_progress';
     const hasEdit = !!(edits && typeof edits === 'object' && edits[lessonId]);
+    const isArchived = !!(edits && edits.__archivedLessonIds && edits.__archivedLessonIds[lessonId]);
 
     let ctaText = '开始学习 →';
     let ctaVariant = 'btn-primary';
@@ -69,7 +70,9 @@
     else if (isCompleted) { ctaText = '复习 →'; ctaVariant = 'btn-outline'; }
 
     let badgeHTML;
-    if (isCompleted) {
+    if (isArchived) {
+      badgeHTML = '<span class="badge badge-outline">已归档</span>';
+    } else if (isCompleted) {
       badgeHTML = '<span class="badge badge-success">已完成</span>' + (hasEdit ? ' <span class="edit-badge">本地编辑</span>' : '');
     } else if (isInProgress) {
       badgeHTML = '<span class="badge badge-primary-outline">进行中</span>' + (hasEdit ? ' <span class="edit-badge">本地编辑</span>' : '');
@@ -81,6 +84,7 @@
       status: status,
       isCompleted: isCompleted,
       isInProgress: isInProgress,
+      isArchived: isArchived,
       hasEdit: hasEdit,
       ctaText: ctaText,
       ctaVariant: ctaVariant,
@@ -109,6 +113,7 @@
         lesson: lesson,
         summary: getCourseSummary(lesson),
         status: getCourseStatus(id, pg, ed),
+        isCustom: !!(window.App && typeof window.App.isCustomLesson === 'function' && window.App.isCustomLesson(id)),
         url: getLessonUrl(id)
       };
     });
@@ -125,6 +130,7 @@
     for (let i = 0; i < items.length; i++) {
       const it = items[i];
       const s = it.status;
+      if (s.isArchived) continue;
       if (s.isInProgress) {
         const t = s.lastVisitedAt || '';
         if (t > bestInProgressTime) { bestInProgressTime = t; bestInProgress = it; }
@@ -156,7 +162,13 @@
     const statusCls =
       (st.isCompleted ? ' is-completed' : '') +
       (st.isInProgress ? ' is-in-progress' : '') +
-      (st.hasEdit ? ' has-edit' : '');
+      (st.hasEdit ? ' has-edit' : '') +
+      (st.isArchived ? ' is-archived' : '');
+
+    const managementControls = st.isArchived
+      ? '<button type="button" class="btn btn-outline btn-sm" data-cc-restore>恢复课时</button>'
+      : '<button type="button" class="btn btn-outline btn-sm" data-cc-archive>归档</button>' +
+          (item.isCustom ? '<button type="button" class="btn btn-outline btn-sm course-card__delete" data-cc-delete>删除</button>' : '');
 
     const titleEditor =
       '<form class="course-card__title-editor" data-cc-title-form="' + escapeHTML(item.id) + '" hidden>' +
@@ -179,8 +191,9 @@
           '</div>' +
         '</div>' +
         '<div class="course-card__controls">' +
-          '<button type="button" class="btn btn-outline btn-sm course-card__title-edit" data-cc-title-edit aria-label="编辑课程名称">编辑名称</button>' +
-          '<div class="course-card__actions"><a href="' + url + '" class="btn ' + st.ctaVariant + ' btn-sm course-card__cta">' + st.ctaText + '</a></div>' +
+          (st.isArchived ? '' : '<button type="button" class="btn btn-outline btn-sm course-card__title-edit" data-cc-title-edit aria-label="编辑课程名称">编辑名称</button>') +
+          '<div class="course-card__management">' + managementControls + '</div>' +
+          '<div class="course-card__actions"><a href="' + url + '" class="btn ' + (st.isArchived ? 'btn-outline' : st.ctaVariant) + ' btn-sm course-card__cta">' + (st.isArchived ? '查看课时' : st.ctaText) + '</a></div>' +
         '</div>' +
         titleEditor +
       '</article>'
@@ -188,19 +201,22 @@
   }
 
   // ===== 渲染：tab + 卡片列表 =====
-  // options: { tabFilter = 'all' | 'in_progress' | 'completed', items, emptyText? }
-  // returns: { html, tabCounts: {all, in_progress, completed, filtered} }
+  // options: { tabFilter = 'all' | 'in_progress' | 'completed' | 'archived', items, emptyText? }
+  // returns: { html, tabCounts: {all, in_progress, completed, archived, filtered} }
   function buildCourseList(options) {
     const items = Array.isArray(options.items) ? options.items : [];
-    const filter = options.tabFilter === 'in_progress' || options.tabFilter === 'completed' ? options.tabFilter : 'all';
-    let filtered = items;
-    if (filter === 'in_progress') filtered = items.filter(function (i) { return i.status.isInProgress; });
-    else if (filter === 'completed') filtered = items.filter(function (i) { return i.status.isCompleted; });
+    const filter = ['in_progress', 'completed', 'archived'].indexOf(options.tabFilter) >= 0 ? options.tabFilter : 'all';
+    const active = items.filter(function (i) { return !i.status.isArchived; });
+    let filtered = active;
+    if (filter === 'in_progress') filtered = active.filter(function (i) { return i.status.isInProgress; });
+    else if (filter === 'completed') filtered = active.filter(function (i) { return i.status.isCompleted; });
+    else if (filter === 'archived') filtered = items.filter(function (i) { return i.status.isArchived; });
 
     const counts = {
-      all: items.length,
-      in_progress: items.filter(function (i) { return i.status.isInProgress; }).length,
-      completed: items.filter(function (i) { return i.status.isCompleted; }).length
+      all: active.length,
+      in_progress: active.filter(function (i) { return i.status.isInProgress; }).length,
+      completed: active.filter(function (i) { return i.status.isCompleted; }).length,
+      archived: items.filter(function (i) { return i.status.isArchived; }).length
     };
     counts.filtered = filtered.length;
 
@@ -218,6 +234,8 @@
           'data-cc-filter="in_progress" aria-selected="' + (filter === 'in_progress' ? 'true' : 'false') + '">进行中 (' + counts.in_progress + ')</button>' +
         '<button role="tab" class="course-catalog__tab' + (filter === 'completed' ? ' is-active' : '') + '" ' +
           'data-cc-filter="completed" aria-selected="' + (filter === 'completed' ? 'true' : 'false') + '">已完成 (' + counts.completed + ')</button>' +
+        '<button role="tab" class="course-catalog__tab' + (filter === 'archived' ? ' is-active' : '') + '" ' +
+          'data-cc-filter="archived" aria-selected="' + (filter === 'archived' ? 'true' : 'false') + '">已归档 (' + counts.archived + ')</button>' +
       '</div>';
 
     const cardsHTML = filtered.map(renderCard).join('');
@@ -255,6 +273,31 @@
         button.hidden = true;
         const input = form.querySelector('[data-cc-title]');
         if (input) input.focus();
+      });
+    });
+
+    containerEl.querySelectorAll('[data-cc-archive], [data-cc-restore], [data-cc-delete]').forEach(function (button) {
+      button.addEventListener('click', function (ev) {
+        ev.preventDefault();
+        ev.stopPropagation();
+        const card = button.closest('.course-card');
+        const lessonId = card && card.querySelector('[data-cc-title-form]') && card.querySelector('[data-cc-title-form]').getAttribute('data-cc-title-form');
+        const title = card && card.querySelector('.course-title') && card.querySelector('.course-title').textContent || '此课时';
+        if (!lessonId || !window.App) return;
+        if (button.hasAttribute('data-cc-archive')) {
+          if (!confirm('归档后将从默认课程路线隐藏，仍可在“已归档”中恢复。确认归档“' + title + '”吗？')) return;
+          if (!window.App.setLessonArchived(lessonId, true)) { alert('归档失败，请检查本地存储权限。'); return; }
+          if (typeof options.onDataChanged === 'function') options.onDataChanged('archived');
+          return;
+        }
+        if (button.hasAttribute('data-cc-restore')) {
+          if (!window.App.setLessonArchived(lessonId, false)) { alert('恢复失败，请检查本地存储权限。'); return; }
+          if (typeof options.onDataChanged === 'function') options.onDataChanged('all');
+          return;
+        }
+        if (!confirm('永久删除“' + title + '”吗？其课程内容、学习进度、练习和复习记录将一并删除，且无法恢复。')) return;
+        if (!window.App.deleteCustomLesson(lessonId)) { alert('删除失败：只有自建课时可以永久删除。'); return; }
+        if (typeof options.onDataChanged === 'function') options.onDataChanged('all');
       });
     });
 
@@ -299,7 +342,7 @@
       card.addEventListener('click', function (ev) {
         // 只有点卡片空白处才跳转；点 CTA 让浏览器正常跳转（不会被这里阻止，因为 a 先处理）
         const target = ev.target;
-        if (target && target.closest && (target.closest('.course-card__cta') || target.closest('.course-card__title-edit') || target.closest('.course-card__title-editor'))) return;
+        if (target && target.closest && (target.closest('.course-card__cta') || target.closest('.course-card__title-edit') || target.closest('.course-card__title-editor') || target.closest('.course-card__management'))) return;
         if (target && target.closest && (target.closest('details') || target.closest('summary'))) return;
         const url = card.getAttribute('data-url');
         if (url) window.location.href = url;
