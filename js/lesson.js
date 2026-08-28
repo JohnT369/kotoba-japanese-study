@@ -1454,8 +1454,8 @@
       var completionNote = !mastery.generated
         ? '完成本课后会进入下一课；也可以稍后生成配套练习。'
         : mastery.passed === 3
-          ? '三组配套练习均已达标，可以安心进入下一课。'
-          : '已完成 ' + mastery.passed + ' / 3 组配套练习；可先标记完成，系统会把薄弱项排入复习。';
+          ? '单词、学习目标和会话训练均已达标，可以安心进入下一课。'
+          : '已完成 ' + mastery.passed + ' / 3 项配套训练；可先标记完成，系统会把薄弱项排入复习。';
       var completion =
         '<section class="complete-section lesson-completion" aria-label="课程完成状态">' +
           '<div><div class="complete-title">' + (completed ? '✓ 本课已完成' : '准备好结束这一课了吗？') + '</div>' +

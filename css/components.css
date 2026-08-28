@@ -2749,7 +2749,7 @@ body.is-edit-mode {
   background: var(--color-bg-muted);
 }
 
-/* ---------- 三组固定课程练习 ---------- */
+/* ---------- 课程配套训练 ---------- */
 .lesson-practice {
   display: flex;
   flex-direction: column;
@@ -2853,6 +2853,15 @@ body.is-edit-mode {
   margin: 0 auto;
   font-size: var(--fs-sm);
   line-height: var(--lh-relaxed);
+}
+
+.practice-vocabulary-note {
+  padding: var(--space-3) var(--space-4);
+  border-left: 3px solid var(--color-accent);
+  border-radius: var(--radius-sm);
+  color: var(--color-text-secondary);
+  background: var(--color-accent-soft);
+  font-size: var(--fs-xs);
 }
 
 .practice-groups {

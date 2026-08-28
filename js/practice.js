@@ -1,6 +1,6 @@
 /* ============================================================
    practice.js - 固定课程练习、模块达标评估与 AI 评分
-   单词短语：4 道选择题，至少答对 3 题达标
+   单词短语：本地三轮训练，严格取自当前编辑后的词表
    学习目标：3 道填空题，至少答对 2 题达标
    应用会话：2 个语音对话回合，AI 平均评分至少 70 分达标
    ============================================================ */
@@ -10,8 +10,10 @@
 
   const CACHE_KEY = 'jp_lesson_practice_v1';
   const PROGRESS_KEY = 'jp_lesson_practice_progress_v1';
+  const VOCAB_TRAINING_KEY = 'jp_lesson_vocabulary_training_v1';
+  const VOCAB_PROGRESS_KEY = 'jp_lesson_vocabulary_training_progress_v1';
   // 升级提示词与会话 schema 后，自动淘汰旧的泛化练习缓存。
-  const SCHEMA_VERSION = 2;
+  const SCHEMA_VERSION = 3;
 
   function escapeHTML(value) {
     return String(value == null ? '' : value).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
@@ -67,18 +69,10 @@
   function isText(value) { return typeof value === 'string' && value.trim().length > 0; }
 
   function validatePractice(raw) {
-    const vocabulary = raw && raw.vocabulary && raw.vocabulary.questions;
     const goals = raw && raw.goals && raw.goals.questions;
     const dialogue = raw && raw.dialogue && raw.dialogue.items;
-    if (!Array.isArray(vocabulary) || vocabulary.length !== 4) return { ok: false, error: '单词短语练习必须包含 4 道选择题。' };
     if (!Array.isArray(goals) || goals.length !== 3) return { ok: false, error: '学习目标练习必须包含 3 道句型填空题。' };
     if (!Array.isArray(dialogue) || dialogue.length !== 2) return { ok: false, error: '应用会话练习必须包含 2 个情景回应。' };
-    const checkedVocab = [];
-    for (let i = 0; i < vocabulary.length; i++) {
-      const item = vocabulary[i] || {};
-      if (!isText(item.prompt) || !Array.isArray(item.options) || item.options.length !== 4 || !item.options.every(isText) || !Number.isInteger(item.answerIndex) || item.answerIndex < 0 || item.answerIndex > 3) return { ok: false, error: '第 ' + (i + 1) + ' 道词汇题格式不完整。' };
-      checkedVocab.push({ prompt: item.prompt.trim(), options: item.options.map(function (x) { return x.trim(); }), answerIndex: item.answerIndex, explain: isText(item.explain) ? item.explain.trim() : '请回到本课词汇表确认词义和读音。' });
-    }
     const checkedGoals = [];
     for (let j = 0; j < goals.length; j++) {
       const item = goals[j] || {};
@@ -95,7 +89,126 @@
       if (required.length < 1 || required.length > 2) return { ok: false, error: '第 ' + (k + 1) + ' 个语音会话必须指定 1–2 个本课表达。' };
       checkedDialogue.push({ situation: item.situation.trim(), partnerLine: item.partnerLine.trim(), partnerReading: isText(item.partnerReading) ? item.partnerReading.trim() : '', instruction: item.instruction.trim(), requiredExpressions: required, referenceAnswer: item.referenceAnswer.trim(), referenceReading: isText(item.referenceReading) ? item.referenceReading.trim() : '', referenceCn: isText(item.referenceCn) ? item.referenceCn.trim() : '', followUpLine: item.followUpLine.trim(), followUpReading: isText(item.followUpReading) ? item.followUpReading.trim() : '', followUpCn: isText(item.followUpCn) ? item.followUpCn.trim() : '' });
     }
-    return { ok: true, data: { vocabulary: { questions: checkedVocab }, goals: { questions: checkedGoals }, dialogue: { items: checkedDialogue } } };
+    return { ok: true, data: { vocabulary: { questions: [] }, goals: { questions: checkedGoals }, dialogue: { items: checkedDialogue } } };
+  }
+
+  function vocabularyItems(lesson) {
+    const items = [];
+    (lesson.vocabulary || []).forEach(function (item, index) {
+      const term = String(item && item.word || '').trim();
+      const meaning = String(item && item.meaning || '').trim();
+      if (term && meaning) items.push({ id: 'word-' + index, term: term, reading: String(item.reading || '').trim(), meaning: meaning, kind: '单词' });
+    });
+    (lesson.phrases || []).forEach(function (item, index) {
+      const term = String(item && item.phrase || '').trim();
+      const meaning = String(item && item.meaning || '').trim();
+      if (term && meaning) items.push({ id: 'phrase-' + index, term: term, reading: String(item.reading || '').trim(), meaning: meaning, kind: '短语' });
+    });
+    return items;
+  }
+
+  function stableOrder(items, seed) {
+    return items.slice().sort(function (a, b) {
+      const byHash = hashText(seed + ':' + a.id).localeCompare(hashText(seed + ':' + b.id));
+      return byHash || a.id.localeCompare(b.id);
+    });
+  }
+
+  function lessonSentences(lesson) {
+    const sentences = [];
+    (lesson.learningGoals || []).forEach(function (goal) {
+      const main = goal && goal.mainExample;
+      if (main && isText(main.jp)) sentences.push(main.jp.trim());
+      (goal && goal.examples || []).forEach(function (example) { if (example && isText(example.jp)) sentences.push(example.jp.trim()); });
+    });
+    ((lesson.dialogue && lesson.dialogue.lines) || []).forEach(function (line) { if (line && isText(line.jp)) sentences.push(line.jp.trim()); });
+    return sentences;
+  }
+
+  // 单词训练不调用 AI：题干、答案、例句全部从当前（含编辑覆盖）的课时对象派生。
+  function buildVocabularyTraining(lesson, variant) {
+    const entries = vocabularyItems(lesson);
+    const sessionSeed = getSourceHash(lesson) + ':' + (variant || 0);
+    const ordered = stableOrder(entries, sessionSeed);
+    const meanings = stableOrder(entries, 'meanings:' + getSourceHash(lesson));
+    const recognition = ordered.slice(0, Math.min(4, ordered.length)).map(function (entry, index) {
+      const options = [entry].concat(meanings.filter(function (candidate) { return candidate.id !== entry.id; }).slice(0, 3));
+      const orderedOptions = stableOrder(options, 'choice:' + entry.id);
+      return { id: 'recognition-' + entry.id, label: entry.term, speak: entry.term, prompt: '选择“' + entry.term + '”的中文意思。', options: orderedOptions.map(function (option) { return option.meaning; }), answerIndex: orderedOptions.findIndex(function (option) { return option.id === entry.id; }), explain: entry.term + '：' + entry.meaning };
+    });
+    const recall = ordered.slice(1, Math.min(4, ordered.length)).map(function (entry) {
+      return { id: 'recall-' + entry.id, label: entry.term, prompt: '根据中文写出本课日语：' + entry.meaning, answer: entry.term, acceptedAnswers: [entry.term].concat(entry.reading ? [entry.reading] : []), explain: entry.term + (entry.reading ? '（' + entry.reading + '）' : '') + '：' + entry.meaning };
+    });
+    const sentences = lessonSentences(lesson);
+    const usage = ordered.map(function (entry) {
+      const sentence = sentences.find(function (candidate) { return candidate.indexOf(entry.term) >= 0; });
+      if (sentence) return { id: 'usage-' + entry.id, label: entry.term, prompt: '补全本课例句中的词。', template: sentence.split(entry.term).join('___'), answer: entry.term, acceptedAnswers: [entry.term], explain: '本课例句：' + sentence };
+      return null;
+    }).filter(Boolean).slice(0, 2);
+    return { sourceCount: entries.length, recognition: recognition, recall: recall, usage: usage };
+  }
+
+  function getVocabularyTraining(lesson) {
+    const saved = readStore(VOCAB_TRAINING_KEY)[lesson.id];
+    return saved && saved.sourceHash === getSourceHash(lesson) ? buildVocabularyTraining(lesson, saved.variant) : null;
+  }
+
+  function hasOutdatedVocabularyTraining(lesson) {
+    const saved = readStore(VOCAB_TRAINING_KEY)[lesson.id];
+    return !!(saved && saved.sourceHash !== getSourceHash(lesson));
+  }
+
+  function generateVocabularyTraining(lesson) {
+    const all = readStore(VOCAB_TRAINING_KEY);
+    const current = all[lesson.id];
+    const variant = current && current.sourceHash === getSourceHash(lesson) ? Number(current.variant || 0) + 1 : 1;
+    all[lesson.id] = { sourceHash: getSourceHash(lesson), variant: variant, generatedAt: new Date().toISOString() };
+    if (!writeStore(VOCAB_TRAINING_KEY, all)) return false;
+    clearVocabularyProgress(lesson.id);
+    return true;
+  }
+
+  function allVocabularyQuestions(training) {
+    if (!training) return [];
+    return ['recognition', 'recall', 'usage'].reduce(function (all, type) {
+      return all.concat((training[type] || []).map(function (question, index) { return Object.assign({ type: type, index: index }, question); }));
+    }, []);
+  }
+
+  function vocabularyPracticeHash(training) { return hashText(JSON.stringify(training || {})); }
+  function blankVocabularyProgress(lesson, training) { return { sourceHash: getSourceHash(lesson), practiceHash: vocabularyPracticeHash(training), answers: {} }; }
+
+  function getVocabularyProgress(lesson, training) {
+    if (!training) return blankVocabularyProgress(lesson, null);
+    const stored = readStore(VOCAB_PROGRESS_KEY)[lesson.id];
+    if (!stored || stored.sourceHash !== getSourceHash(lesson) || stored.practiceHash !== vocabularyPracticeHash(training)) return blankVocabularyProgress(lesson, training);
+    return { sourceHash: stored.sourceHash, practiceHash: stored.practiceHash, answers: stored.answers || {} };
+  }
+
+  function updateVocabularyProgress(lesson, training, mutate) {
+    const progress = getVocabularyProgress(lesson, training);
+    mutate(progress);
+    const all = readStore(VOCAB_PROGRESS_KEY);
+    all[lesson.id] = progress;
+    writeStore(VOCAB_PROGRESS_KEY, all);
+  }
+
+  function clearVocabularyProgress(lessonId) {
+    const all = readStore(VOCAB_PROGRESS_KEY);
+    delete all[lessonId];
+    writeStore(VOCAB_PROGRESS_KEY, all);
+  }
+
+  function vocabularyMastery(training, progress) {
+    if (!training) return { state: 'pending', label: '待生成', detail: '按当前单词表生成训练后开始评估' };
+    const questions = allVocabularyQuestions(training);
+    if (!questions.length) return { state: 'pending', label: '暂无可练内容', detail: '请先在本课编辑模式补充带释义的单词或短语。' };
+    let answered = 0;
+    let correct = 0;
+    questions.forEach(function (question) { const answer = progress.answers[question.id]; if (answer && answer.answered) { answered++; if (answer.correct) correct++; } });
+    if (answered < questions.length) return { state: answered ? 'progress' : 'pending', label: answered ? '进行中' : '待完成', detail: '已完成 ' + answered + ' / ' + questions.length + ' 题' };
+    const needed = Math.ceil(questions.length * 0.7);
+    return correct >= needed ? { state: 'passed', label: '已达标', detail: correct + ' / ' + questions.length + ' 正确（要求至少 ' + needed + ' 题）' } : { state: 'review', label: '待巩固', detail: correct + ' / ' + questions.length + ' 正确（达标需至少 ' + needed + ' 题）' };
   }
 
   function getRecord(lesson) {
@@ -106,14 +219,13 @@
   }
 
   function buildPrompt(lesson) {
-    const schema = { vocabulary: { questions: [{ prompt: '中文题干', options: ['选项A', '选项B', '选项C', '选项D'], answerIndex: 0, explain: '仅说明本课知识点' }] }, goals: { questions: [{ prompt: '中文指令', sentenceTemplate: '必须是本课原句，且只有 ___ 一个空', answer: '原句中的连续片段', acceptedAnswers: ['答案'], hint: '本课目标名称或中文提示', explain: '说明本课句型' }] }, dialogue: { items: [{ situation: '仅由本课会话改写的中文情景', partnerLine: '本课风格的对方日语', partnerReading: '假名读音', instruction: '中文口头回应任务', requiredExpressions: ['本课表达'], referenceAnswer: '只使用本课词汇和句型的日语回应', referenceReading: '假名读音', referenceCn: '中文', followUpLine: '对方的简短下一句', followUpReading: '假名读音', followUpCn: '中文' }] } };
+    const schema = { goals: { questions: [{ prompt: '中文指令', sentenceTemplate: '必须是本课原句，且只有 ___ 一个空', answer: '原句中的连续片段', acceptedAnswers: ['答案'], hint: '本课目标名称或中文提示', explain: '说明本课句型' }] }, dialogue: { items: [{ situation: '仅由本课会话改写的中文情景', partnerLine: '本课风格的对方日语', partnerReading: '假名读音', instruction: '中文口头回应任务', requiredExpressions: ['本课表达'], referenceAnswer: '只使用本课词汇和句型的日语回应', referenceReading: '假名读音', referenceCn: '中文', followUpLine: '对方的简短下一句', followUpReading: '假名读音', followUpCn: '中文' }] } };
     return [
       '你是严格遵循教材范围的日语初学者练习设计师。根据下列“唯一课程来源”生成练习，不允许凭常识补充未给出的词汇、语法、人物、地点或更高难度表达。',
       '难度必须与课程来源完全等阶：若课程是入门句型，题目只能考察本课已有句型的识别、替换和一轮回应；不得出现敬语扩展、过去时、动词变形或本课未出现的句尾。',
-      '词汇与短语模块：固定 4 题，全部为四选一。正确项和 3 个干扰项都必须来自本课 vocabulary 或 phrases；同一题只考一个明确词义/读音/使用场景；选项语言形式必须一致；不要使用“以上都对”、否定陷阱或课外同义词。尽量覆盖词汇与短语，不能重复考同一项目。',
       '学习目标模块：固定 3 题。每题对应不同 learningGoals；sentenceTemplate 必须逐字取自该目标的 mainExample 或 examples，只把一个连续的、可学习的片段替换成 ___；答案必须能在课程来源原文中找到；不得自行造句。',
       '语音会话模块：固定 2 个回合。情景、对方台词、参考回应和下一句必须紧贴 dialogue.lines 的人物关系、语气与信息；每题 requiredExpressions 只列 1–2 个且必须来自本课词汇、短语、例句或会话。设计为学习者先听对方、再用日语口头回应；followUpLine 是学习者回应后可播放的简短收束句。',
-      '只返回一个合法 JSON 对象，禁止 Markdown、代码围栏和额外文字。固定数量：4 道选择题、3 道单空填空题、2 个语音会话回合。',
+      '只返回一个合法 JSON 对象，禁止 Markdown、代码围栏和额外文字。固定数量：3 道单空填空题、2 个语音会话回合。',
       'JSON schema：' + JSON.stringify(schema),
       '唯一课程来源：' + JSON.stringify(sourcePayload(lesson))
     ].join('\n\n');
@@ -172,16 +284,33 @@
     return '<div class="practice-mastery is-' + mastery.state + '"><strong>' + escapeHTML(mastery.label) + '</strong><span>' + escapeHTML(mastery.detail) + '</span></div>';
   }
 
-  function renderChoices(questions, progress) {
+  function renderVocabularyChoices(questions, progress) {
     return questions.map(function (question, index) {
-      const saved = progress.vocabulary[index];
+      const saved = progress.answers[question.id];
       const selected = saved && Number.isInteger(saved.selected) ? saved.selected : null;
       const correct = selected === question.answerIndex;
-      return '<article class="practice-card"><div class="practice-card__number">词汇题 ' + (index + 1) + ' / 4</div><p class="practice-card__prompt">' + escapeHTML(question.prompt) + '</p><div class="practice-options">' + question.options.map(function (option, optionIndex) {
+      return '<article class="practice-card"><div class="practice-card__number">识别 · ' + (index + 1) + ' / ' + questions.length + '</div><p class="practice-card__prompt">' + escapeHTML(question.prompt) + ' <button type="button" class="btn-play" data-vocabulary-play="' + index + '" title="播放单词读音">🔊</button></p><div class="practice-options">' + question.options.map(function (option, optionIndex) {
         const state = selected === null ? '' : optionIndex === question.answerIndex ? ' is-correct' : optionIndex === selected ? ' is-wrong' : '';
-        return '<button type="button" class="practice-option' + state + '" data-practice-choice="' + index + ',' + optionIndex + '"' + (selected === null ? '' : ' disabled') + '><span>' + String.fromCharCode(65 + optionIndex) + '</span>' + escapeHTML(option) + '</button>';
+        return '<button type="button" class="practice-option' + state + '" data-vocabulary-choice="recognition,' + index + ',' + optionIndex + '"' + (selected === null ? '' : ' disabled') + '><span>' + String.fromCharCode(65 + optionIndex) + '</span>' + escapeHTML(option) + '</button>';
       }).join('') + '</div><p class="practice-feedback' + (selected === null ? '' : correct ? ' is-correct' : ' is-wrong') + '">' + (selected === null ? '' : (correct ? '✓ 回答正确。' : '正确答案已标出。') + ' ' + escapeHTML(question.explain)) + '</p></article>';
     }).join('');
+  }
+
+  function renderVocabularyFill(type, questions, progress, label) {
+    return questions.map(function (question, index) {
+      const saved = progress.answers[question.id];
+      const answered = saved && typeof saved.answer === 'string';
+      const correct = answered && saved.correct;
+      return '<article class="practice-card"><div class="practice-card__number">' + label + ' · ' + (index + 1) + ' / ' + questions.length + '</div><p class="practice-card__prompt">' + escapeHTML(question.prompt) + '</p>' + (question.template ? '<p class="practice-template">' + escapeHTML(question.template) + '</p>' : '') + '<div class="practice-fill-action"><input type="text" autocomplete="off" data-vocabulary-input="' + type + ',' + index + '" value="' + escapeHTML(answered ? saved.answer : '') + '" placeholder="输入本课日语表达"><button type="button" class="btn btn-outline btn-sm" data-vocabulary-check="' + type + ',' + index + '">检查</button></div><p class="practice-feedback' + (!answered ? '' : correct ? ' is-correct' : ' is-wrong') + '" data-vocabulary-feedback="' + type + ',' + index + '">' + (!answered ? '' : (correct ? '✓ 正确。' : '参考答案：' + escapeHTML(question.answer) + '。') + ' ' + escapeHTML(question.explain)) + '</p></article>';
+    }).join('');
+  }
+
+  function renderVocabularyTraining(training, progress) {
+    const groups = [];
+    if (training.recognition.length) groups.push('<div class="practice-group"><div class="practice-group__head"><span>第一轮 · 认得</span><h4>词义识别</h4><p>看词、听读音，确认它的意思。</p></div>' + renderVocabularyChoices(training.recognition, progress) + '</div>');
+    if (training.recall.length) groups.push('<div class="practice-group"><div class="practice-group__head"><span>第二轮 · 记住</span><h4>中文回忆</h4><p>根据中文写出本课日语；平假名或教材写法均可。</p></div>' + renderVocabularyFill('recall', training.recall, progress, '回忆') + '</div>');
+    if (training.usage.length) groups.push('<div class="practice-group"><div class="practice-group__head"><span>第三轮 · 会用</span><h4>句中应用</h4><p>只使用本课例句，补全其中的单词。</p></div>' + renderVocabularyFill('usage', training.usage, progress, '应用') + '</div>');
+    return '<div class="practice-vocabulary-note">训练来源：当前编辑后的单词与短语表，共 ' + training.sourceCount + ' 项。</div><div class="practice-groups">' + groups.join('') + '</div>';
   }
 
   function renderGoals(questions, progress) {
@@ -203,7 +332,7 @@
   }
 
   const META = {
-    vocabulary: { eyebrow: '模块一配套练习', title: '单词与短语练习', desc: '4 道选择题；完成后按正确率评估掌握程度。' },
+    vocabulary: { eyebrow: '模块一配套练习', title: '单词与短语训练', desc: '识别、回忆、句中应用三轮训练；只取自当前编辑后的词表。' },
     goals: { eyebrow: '模块二配套练习', title: '学习目标练习', desc: '3 道句型填空；完成后按正确率评估掌握程度。' },
     dialogue: { eyebrow: '模块三配套练习', title: '语音应用会话', desc: '听一句、说一句；由高质量会话模型按本课表达即时反馈。' }
   };
@@ -211,16 +340,22 @@
   function renderModule(lesson, moduleKey) {
     const meta = META[moduleKey];
     if (!meta) return '';
-    const record = getRecord(lesson);
-    const progress = getProgress(lesson, record);
-    const stale = record && record.sourceHash !== getSourceHash(lesson);
+    const aiRecord = getRecord(lesson);
+    const vocabularyTraining = moduleKey === 'vocabulary' ? getVocabularyTraining(lesson) : null;
+    const record = moduleKey === 'vocabulary' ? vocabularyTraining : aiRecord;
+    const progress = moduleKey === 'vocabulary' ? getVocabularyProgress(lesson, vocabularyTraining) : getProgress(lesson, aiRecord);
+    const stale = moduleKey === 'vocabulary' ? hasOutdatedVocabularyTraining(lesson) : aiRecord && aiRecord.sourceHash !== getSourceHash(lesson);
     const hasAI = window.AI && typeof window.AI.hasKey === 'function' && window.AI.hasKey();
-    const label = record ? (stale ? '按最新课程重新生成' : '重新生成练习') : '生成练习';
-    let body = '<div class="practice-empty"><div class="practice-empty__icon">✦</div><h4>还没有生成练习</h4><p>生成后，三组固定练习会分别出现在对应学习模块下方。</p></div>';
-    if (record && moduleKey === 'vocabulary') body = renderChoices(record.data.vocabulary.questions, progress);
-    if (record && moduleKey === 'goals') body = renderGoals(record.data.goals.questions, progress);
-    if (record && moduleKey === 'dialogue') body = renderDialogues(record.data.dialogue.items, progress);
-    return '<section class="lesson-practice lesson-practice--module" data-lesson-practice="' + escapeHTML(lesson.id) + '" data-practice-module="' + moduleKey + '"><div class="practice-toolbar"><div><p class="practice-eyebrow">' + meta.eyebrow + '</p><h4 class="practice-module-title">' + meta.title + '</h4><p class="practice-toolbar__status">' + (stale ? '课程内容已变化，建议重新生成练习。' : meta.desc) + '</p></div><div class="practice-toolbar__actions"><button type="button" class="btn btn-primary btn-sm" data-practice-generate>' + (hasAI ? '✦ ' + label : '配置 AI 后生成') + '</button>' + (record ? '<button type="button" class="btn btn-outline btn-sm" data-practice-clear>清除练习</button>' : '') + '</div></div>' + renderMastery(moduleKey, record, progress) + '<div class="practice-error" data-practice-error hidden></div><div class="practice-module-body">' + body + '</div></section>';
+    const label = record ? (stale ? '按当前词表重新生成' : '重新生成练习') : '生成练习';
+    let body = '<div class="practice-empty"><div class="practice-empty__icon">✦</div><h4>还没有生成训练</h4><p>' + (moduleKey === 'vocabulary' ? '会直接使用当前编辑后的单词与短语表，不调用 AI。' : '生成后，练习会出现在对应学习模块下方。') + '</p></div>';
+    if (vocabularyTraining) body = renderVocabularyTraining(vocabularyTraining, progress);
+    if (aiRecord && moduleKey === 'goals') body = renderGoals(aiRecord.data.goals.questions, progress);
+    if (aiRecord && moduleKey === 'dialogue') body = renderDialogues(aiRecord.data.dialogue.items, progress);
+    const action = moduleKey === 'vocabulary'
+      ? '<button type="button" class="btn btn-primary btn-sm" data-practice-vocabulary-generate>' + label + '</button>' + (vocabularyTraining ? '<button type="button" class="btn btn-outline btn-sm" data-practice-vocabulary-clear>清除训练</button>' : '')
+      : '<button type="button" class="btn btn-primary btn-sm" data-practice-generate>' + (hasAI ? '✦ ' + label : '配置 AI 后生成') + '</button>' + (aiRecord ? '<button type="button" class="btn btn-outline btn-sm" data-practice-clear>清除练习</button>' : '');
+    const mastery = moduleKey === 'vocabulary' ? vocabularyMastery(vocabularyTraining, progress) : masteryFor(moduleKey, aiRecord, progress);
+    return '<section class="lesson-practice lesson-practice--module" data-lesson-practice="' + escapeHTML(lesson.id) + '" data-practice-module="' + moduleKey + '"><div class="practice-toolbar"><div><p class="practice-eyebrow">' + meta.eyebrow + '</p><h4 class="practice-module-title">' + meta.title + '</h4><p class="practice-toolbar__status">' + (stale ? (moduleKey === 'vocabulary' ? '词表已编辑，请按当前词表重新生成训练。' : '课程内容已变化，建议重新生成练习。') : meta.desc) + '</p></div><div class="practice-toolbar__actions">' + action + '</div></div><div class="practice-mastery is-' + mastery.state + '"><strong>' + escapeHTML(mastery.label) + '</strong><span>' + escapeHTML(mastery.detail) + '</span></div><div class="practice-error" data-practice-error hidden></div><div class="practice-module-body">' + body + '</div></section>';
   }
 
   function replaceAll(lesson) {
@@ -236,7 +371,7 @@
   function generate(lesson, root, button) {
     if (!window.AI || !window.AI.hasKey || !window.AI.hasKey()) { window.location.href = 'ai.html'; return; }
     const oldRecord = getRecord(lesson);
-    if (oldRecord && !confirm('重新生成会覆盖三组练习和现有达标记录，确认继续吗？')) return;
+    if (oldRecord && !confirm('重新生成会覆盖学习目标与会话练习及其记录，确认继续吗？')) return;
     button.disabled = true;
     button.textContent = '正在生成…';
     window.AI.callJSON('lesson_practice', buildPrompt(lesson), { temperature: 0.25, maxTokens: 2200 }).then(function (result) {
@@ -286,12 +421,60 @@
     document.querySelectorAll('[data-lesson-practice]').forEach(function (root) {
       if (root._practiceBound) return;
       root._practiceBound = true;
+      const moduleKey = root.getAttribute('data-practice-module');
+      if (moduleKey === 'vocabulary') {
+        const training = getVocabularyTraining(lesson);
+        const generateVocabularyButton = root.querySelector('[data-practice-vocabulary-generate]');
+        if (generateVocabularyButton) generateVocabularyButton.addEventListener('click', function () {
+          if (!generateVocabularyTraining(lesson)) { showError(root, '无法保存训练，请检查浏览器本地存储权限。'); return; }
+          replaceAll(lesson);
+        });
+        const clearVocabularyButton = root.querySelector('[data-practice-vocabulary-clear]');
+        if (clearVocabularyButton) clearVocabularyButton.addEventListener('click', function () {
+          const all = readStore(VOCAB_TRAINING_KEY); delete all[lesson.id]; writeStore(VOCAB_TRAINING_KEY, all); clearVocabularyProgress(lesson.id); replaceAll(lesson);
+        });
+        if (!training) return;
+        root.querySelectorAll('[data-vocabulary-play]').forEach(function (button) {
+          button.addEventListener('click', function () {
+            const question = training.recognition[Number(button.getAttribute('data-vocabulary-play'))];
+            if (question) speakJapanese(question.speak);
+          });
+        });
+        root.querySelectorAll('[data-vocabulary-choice]').forEach(function (button) {
+          button.addEventListener('click', function () {
+            const parts = button.getAttribute('data-vocabulary-choice').split(',');
+            const question = training[parts[0]] && training[parts[0]][Number(parts[1])];
+            const selected = Number(parts[2]);
+            if (!question) return;
+            const correct = selected === question.answerIndex;
+            updateVocabularyProgress(lesson, training, function (progress) { progress.answers[question.id] = { selected: selected, correct: correct, answered: true }; });
+            recordReview(lesson, 'vocabulary:' + question.id, '单词：' + question.label, correct ? '已答对，稍后复习巩固。' : '答错过一次，建议回到本课词汇表复习。', correct);
+            replaceAll(lesson);
+          });
+        });
+        root.querySelectorAll('[data-vocabulary-check]').forEach(function (button) {
+          button.addEventListener('click', function () {
+            const parts = button.getAttribute('data-vocabulary-check').split(',');
+            const question = training[parts[0]] && training[parts[0]][Number(parts[1])];
+            const input = root.querySelector('[data-vocabulary-input="' + parts.join(',') + '"]');
+            const feedback = root.querySelector('[data-vocabulary-feedback="' + parts.join(',') + '"]');
+            if (!question || !input) return;
+            const answer = input.value.trim();
+            if (!answer) { if (feedback) { feedback.textContent = '请先填写答案。'; feedback.className = 'practice-feedback is-wrong'; } return; }
+            const correct = question.acceptedAnswers.some(function (item) { return normalizeText(item) === normalizeText(answer); });
+            updateVocabularyProgress(lesson, training, function (progress) { progress.answers[question.id] = { answer: answer, correct: correct, answered: true }; });
+            recordReview(lesson, 'vocabulary:' + question.id, '单词：' + question.label, correct ? '已答对，按间隔复习巩固。' : '需要巩固本课单词：' + question.answer, correct);
+            replaceAll(lesson);
+          });
+        });
+        return;
+      }
       const record = getRecord(lesson);
       const generateButton = root.querySelector('[data-practice-generate]');
       if (generateButton) generateButton.addEventListener('click', function () { generate(lesson, root, generateButton); });
       const clearButton = root.querySelector('[data-practice-clear]');
       if (clearButton) clearButton.addEventListener('click', function () {
-        if (!confirm('清除本课三组练习及达标记录吗？')) return;
+        if (!confirm('清除本课学习目标与会话练习及其记录吗？')) return;
         const all = readStore(CACHE_KEY); delete all[lesson.id]; writeStore(CACHE_KEY, all); clearProgress(lesson.id); replaceAll(lesson);
       });
       if (!record) return;
@@ -403,9 +586,15 @@
   function getLessonMastery(lesson) {
     const record = getRecord(lesson);
     const progress = getProgress(lesson, record);
-    const modules = ['vocabulary', 'goals', 'dialogue'].map(function (key) { return masteryFor(key, record, progress); });
-    return { generated: !!record, modules: modules, passed: modules.filter(function (item) { return item.state === 'passed'; }).length };
+    const vocabularyTraining = getVocabularyTraining(lesson);
+    const vocabularyProgress = getVocabularyProgress(lesson, vocabularyTraining);
+    const modules = [
+      vocabularyMastery(vocabularyTraining, vocabularyProgress),
+      masteryFor('goals', record, progress),
+      masteryFor('dialogue', record, progress)
+    ];
+    return { generated: !!record || !!vocabularyTraining, modules: modules, passed: modules.filter(function (item) { return item.state === 'passed'; }).length };
   }
 
-  window.Practice = { renderModule: renderModule, bind: bind, validate: validatePractice, getSourceHash: getSourceHash, getMastery: masteryFor, getLessonMastery: getLessonMastery };
+  window.Practice = { renderModule: renderModule, bind: bind, validate: validatePractice, buildVocabularyTraining: buildVocabularyTraining, getSourceHash: getSourceHash, getMastery: masteryFor, getLessonMastery: getLessonMastery };
 })();

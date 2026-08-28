@@ -57,3 +57,24 @@ test('practice CTA uses concise generation copy', async () => {
   assert.match(source, /'生成练习'/);
   assert.doesNotMatch(source, /生成三组练习/);
 });
+
+test('vocabulary training is generated from the edited lesson source', async () => {
+  const source = await readFile('js/practice.js', 'utf8');
+  const context = { window: {} };
+  vm.runInNewContext(source, context);
+  const training = context.window.Practice.buildVocabularyTraining({
+    id: 'edited-lesson', title: '编辑后的课时', vocabulary: [
+      { word: '私', reading: 'わたし', meaning: '我' },
+      { word: '学生', reading: 'がくせい', meaning: '学生' },
+      { word: '先生', reading: 'せんせい', meaning: '老师' },
+      { word: '日本', reading: 'にほん', meaning: '日本' }
+    ],
+    phrases: [{ phrase: 'はじめまして', reading: 'はじめまして', meaning: '初次见面' }],
+    learningGoals: [{ mainExample: { jp: '私は学生です。' }, examples: [] }],
+    dialogue: { lines: [] }
+  });
+  assert.equal(training.sourceCount, 5);
+  assert.ok(training.recognition.every((question) => question.options.every((option) => ['我', '学生', '老师', '日本', '初次见面'].includes(option))));
+  assert.ok(training.recall.every((question) => question.acceptedAnswers.includes(question.answer)));
+  assert.ok(training.usage.some((question) => question.template.includes('___')));
+});
