@@ -23,3 +23,9 @@ test('lesson completion is connected to the learning page', async () => {
   assert.match(source, /data-lesson-complete/);
   assert.match(source, /App\.markLessonCompleted\(lessonId\)/);
 });
+
+test('authenticated visitors bypass the login modal and sidebar login link', async () => {
+  const source = await readFile('js/auth.js', 'utf8');
+  assert.match(source, /if \(isAuthPage && user\) \{/);
+  assert.match(source, /sidebarEntry\.hidden = !!activeUser/);
+});

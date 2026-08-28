@@ -178,6 +178,8 @@
       if (!activeUser) window.location.href = 'login.html';
     });
     entry.appendChild(button);
+    const sidebarEntry = document.getElementById('authSidebarEntry');
+    if (sidebarEntry) sidebarEntry.hidden = !!activeUser;
     if (activeUser) {
       const signOut = document.createElement('button');
       signOut.type = 'button';
@@ -277,10 +279,21 @@
   window.KotobaAuth = { client: client, getUser: function () { return activeUser; } };
 
   function init() {
-    mountAuthUI();
-    mountSidebarEntry();
     client.auth.getSession().then(function (result) {
-      if (result.data.session && result.data.session.user) return hydrateUser(result.data.session.user);
+      const user = result.data.session && result.data.session.user;
+      // 登录页不应先闪现登录弹窗，再因已有会话跳走。
+      if (isAuthPage && user) {
+        window.location.replace('index.html');
+        return;
+      }
+      mountAuthUI();
+      mountSidebarEntry();
+      if (user) return hydrateUser(user);
+      renderAccount();
+    }).catch(function () {
+      // 会话读取失败时仍允许用户以普通登录模式继续。
+      mountAuthUI();
+      mountSidebarEntry();
       renderAccount();
     });
   }
