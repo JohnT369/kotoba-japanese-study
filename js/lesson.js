@@ -1235,7 +1235,7 @@
       return readTextarea(item.querySelector('[data-edit-field="goal"]'), '');
     }).filter(function (s) { return s && s.trim().length > 0; });
 
-    // 2. grammar（兼容目录页 course-grammar）：如果没编辑就兜底用原版
+    // 2. grammar（兼容历史课程数据）：如果没编辑就兜底用原版
     let grammar = collectListItems(root, 'grammar').map(function (item) {
       return readItemFields(item, [
         { field: '句型 (pattern)', out: 'pattern' },

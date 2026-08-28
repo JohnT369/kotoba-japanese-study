@@ -167,20 +167,22 @@
 
     return (
       '<article class="course-card' + statusCls + '" tabindex="0" role="link" data-url="' + escapeHTML(url) + '" aria-label="' + escapeHTML(s.dayDisplay + ' ' + (lesson.title || '')) + '">' +
-        '<div class="course-card__head">' +
-          '<div class="course-num">' + s.dayDisplay + '</div>' +
-          '<div class="course-card__status">' + st.badgeHTML + '</div>' +
+        '<div class="course-card__summary">' +
+          '<div class="course-card__head">' +
+            '<div class="course-num">' + s.dayDisplay + '</div>' +
+            '<div class="course-card__status">' + st.badgeHTML + '</div>' +
+          '</div>' +
+          '<div class="course-card__body">' +
+            '<div class="course-title-row"><h3 class="course-title">' + escapeHTML(lesson.title || '') + '</h3></div>' +
+            '<p class="course-sub">' + escapeHTML(lesson.subtitle || '') + '</p>' +
+            meta +
+          '</div>' +
         '</div>' +
-        '<div class="course-card__body">' +
-          '<div class="course-title-row"><h3 class="course-title">' + escapeHTML(lesson.title || '') + '</h3>' +
-          '<button type="button" class="btn btn-outline btn-sm course-card__title-edit" data-cc-title-edit aria-label="编辑课程名称">编辑名称</button></div>' +
-          '<p class="course-sub">' + escapeHTML(lesson.subtitle || '') + '</p>' +
+        '<div class="course-card__controls">' +
+          '<button type="button" class="btn btn-outline btn-sm course-card__title-edit" data-cc-title-edit aria-label="编辑课程名称">编辑名称</button>' +
+          '<div class="course-card__actions"><a href="' + url + '" class="btn ' + st.ctaVariant + ' btn-sm course-card__cta">' + st.ctaText + '</a></div>' +
         '</div>' +
         titleEditor +
-        meta +
-        '<div class="course-card__actions">' +
-          '<a href="' + url + '" class="btn ' + st.ctaVariant + ' btn-sm course-card__cta">' + st.ctaText + '</a>' +
-        '</div>' +
       '</article>'
     );
   }

@@ -45,6 +45,8 @@ test('course card counts edited content and keeps the summary compact', async ()
   };
   const items = context.window.CourseCatalog.buildCatalogItems([lesson], {}, { 'lesson-edited': lesson });
   const html = context.window.CourseCatalog.buildCourseList({ items }).html;
+  assert.match(html, /course-card__summary/);
+  assert.match(html, /course-card__controls/);
   assert.match(html, /📘 3 词/);
   assert.match(html, /🎯 2 目标/);
   assert.doesNotMatch(html, /语法：|查看本课/);

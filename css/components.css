@@ -342,10 +342,15 @@
 /* --- 单张卡片（article tabbable + focus-visible）--- */
 .course-card {
   position: relative;
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-3);
-  padding: var(--cc-card-pad);
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-areas:
+    "summary controls"
+    "editor editor";
+  align-items: center;
+  column-gap: var(--space-6);
+  row-gap: var(--space-3);
+  padding: var(--space-5) var(--space-6);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
   background: var(--color-bg);
@@ -382,8 +387,9 @@
 .course-card__head {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: var(--space-4);
+  justify-content: flex-start;
+  gap: var(--space-2);
+  margin-bottom: var(--space-2);
 }
 .course-num {
   font-size: var(--fs-xs);
@@ -399,12 +405,10 @@
   align-items: center;
 }
 
-.course-card__body { }
+.course-card__summary { grid-area: summary; min-width: 0; }
+.course-card__body { min-width: 0; }
 .course-title-row {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: var(--space-3);
+  min-width: 0;
 }
 .course-title {
   font-size: var(--fs-md);
@@ -412,8 +416,17 @@
   line-height: 1.35;
 }
 .course-title-row .course-title { margin-bottom: 0; }
+.course-card__controls {
+  grid-area: controls;
+  display: flex;
+  min-width: max-content;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: var(--space-3);
+}
 .course-card__title-edit { flex: 0 0 auto; }
 .course-card__title-editor {
+  grid-area: editor;
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: var(--space-3);
@@ -457,37 +470,13 @@
 .course-sub {
   font-size: var(--fs-sm);
   color: var(--color-text-secondary);
-  margin-bottom: var(--space-2);
+  margin: var(--space-1) 0 0;
   line-height: var(--lh-normal);
-}
-
-/* 语法标签（最多 2 条） */
-.course-grammar__tags {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-2);
-}
-.course-grammar__tag {
-  font-size: var(--fs-xxs);
-  color: var(--color-text-muted);
-  padding: 3px var(--space-3);
-  background: var(--color-bg-muted);
-  border-radius: 4px;
-  display: inline-block;
-}
-/* 兼容旧的 .course-grammar 单块选择器（progress.js / 其他页未动的仍用此） */
-.course-grammar {
-  font-size: var(--fs-xxs);
-  color: var(--color-text-muted);
-  padding: 2px var(--space-3);
-  background: var(--color-bg-muted);
-  border-radius: 4px;
-  display: inline-block;
 }
 
 /* ---- content 计数 3 个胶囊 ---- */
 .course-card__meta {
-  margin-top: var(--space-1);
+  margin-top: var(--space-3);
   display: flex;
   flex-wrap: wrap;
   gap: var(--space-2);
@@ -503,62 +492,12 @@
 .course-card__meta .cs-phrase { background: var(--cc-phrase-bg); color: var(--cc-phrase-fg); }
 .course-card__meta .cs-goal   { background: var(--cc-goal-bg);   color: var(--cc-goal-fg); }
 
-/* 学习目标 <details> 折叠 */
-.course-card__goals-details {
-  margin-top: var(--space-2);
-  border: 1px dashed var(--color-border);
-  border-radius: var(--radius-sm);
-  background: var(--color-bg-soft);
-  padding: var(--space-2) var(--space-3);
-}
-.course-card__goals-details summary {
-  font-size: var(--fs-xs);
-  color: var(--cc-accent);
-  font-weight: var(--fw-) var(--fw-semibold);
-  cursor: pointer;
-  list-style: none;
-  user-select: none;
-}
-.course-card__goals-details summary::-webkit-details-marker {
-  display: none;
-}
-.course-card__goals-details[open] summary {
-  margin-bottom: var(--space-2);
-  color: var(--cc-mark-fg);
-}
-.cc-goals-list {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-1);
-}
-.cc-goal-row {
-  display: grid;
-  grid-template-columns: 36px 1fr;
-  gap: var(--space-2);
-  align-items: start;
-  font-size: var(--fs-xs);
-}
-.cc-goal-num {
-  justify-self: center;
-  padding: 1px 6px;
-  background: var(--cc-mark-bg);
-  color: var(--cc-mark-fg);
-  border-radius: 4px;
-  font-size: var(--fs-11);
-  font-weight: var(--fw-) var(--fw-bold);
-  line-height: var(--lh-normal);
-}
-.cc-goal-title {
-  color: var(--color-text);
-  line-height: var(--lh-normal);
-}
-
 /* 卡片底部 CTA 按钮行 */
 .course-card__actions {
   display: flex;
   justify-content: flex-end;
   align-items: center;
-  margin-top: var(--space-1);
+  margin: 0;
 }
 .course-card__cta:focus-visible {
   outline: 3px solid var(--cc-accent);
@@ -573,6 +512,11 @@
 /* 响应式：卡片/表格折叠 */
 @media (max-width: 560px) {
   .course-card {
+    grid-template-columns: 1fr;
+    grid-template-areas:
+      "summary"
+      "controls"
+      "editor";
     padding: var(--space-4);
   }
   .course-card.is-in-progress {
@@ -581,11 +525,16 @@
   .course-card__head {
     gap: var(--space-3);
   }
+  .course-card__controls {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+  }
   .course-card__actions {
-    justify-content: stretch;
+    justify-content: flex-end;
   }
   .course-card__cta {
-    width: 100%;
+    width: auto;
   }
   .course-catalog__hero-row {
     flex-direction: column;
@@ -593,9 +542,6 @@
   }
   .course-catalog__hero-cta .btn {
     width: 100%;
-  }
-  .cc-goal-row {
-    grid-template-columns: 32px 1fr;
   }
 }
 
@@ -2752,7 +2698,7 @@ body.is-edit-mode {
    历史：以下旧样式在 V5 目录重构后不再使用，已删除以降低维护成本：
    course-stats 容器与 cs-pill 裸色号（现由 course-card__meta .cs-pill + cc-* 设计令牌提供）
    cs-vocab / cs-phrase / cs-goal 裸色号（现用 var 设计令牌 cc-vocab / cc-phrase / cc-goal）
-   课程卡内嵌入的 small 索引卡（现用 <details> course-card__goals-details 折叠替换）
+   课程卡片的统计徽标由 course-card__meta 管理
    ------------------------------------------------------------------- */
 
 /* ---------- 编辑模式：学习目标 ↑/↓ 移动按钮 + 头部 ---------- */
