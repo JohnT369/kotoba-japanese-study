@@ -215,7 +215,7 @@
     const progress = getProgress(lesson, record);
     const stale = record && record.sourceHash !== getSourceHash(lesson);
     const hasAI = window.AI && typeof window.AI.hasKey === 'function' && window.AI.hasKey();
-    const label = record ? (stale ? '按最新课程重新生成' : '重新生成三组练习') : '生成三组练习';
+    const label = record ? (stale ? '按最新课程重新生成' : '重新生成练习') : '生成练习';
     let body = '<div class="practice-empty"><div class="practice-empty__icon">✦</div><h4>还没有生成练习</h4><p>生成后，三组固定练习会分别出现在对应学习模块下方。</p></div>';
     if (record && moduleKey === 'vocabulary') body = renderChoices(record.data.vocabulary.questions, progress);
     if (record && moduleKey === 'goals') body = renderGoals(record.data.goals.questions, progress);

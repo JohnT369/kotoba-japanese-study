@@ -51,3 +51,9 @@ test('course card counts edited content and keeps the summary compact', async ()
   assert.match(html, /🎯 2 目标/);
   assert.doesNotMatch(html, /语法：|查看本课/);
 });
+
+test('practice CTA uses concise generation copy', async () => {
+  const source = await readFile('js/practice.js', 'utf8');
+  assert.match(source, /'生成练习'/);
+  assert.doesNotMatch(source, /生成三组练习/);
+});
