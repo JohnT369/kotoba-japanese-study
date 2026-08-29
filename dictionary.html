@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>KOTOBA · 课程词典</title>
+  <link rel="stylesheet" href="css/global.css?v=3">
+  <link rel="stylesheet" href="css/components.css?v=8">
+</head>
+<body class="page-dictionary">
+  <div class="layout">
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-header"><h1 class="logo">日本語</h1><p class="logo-sub">个人学习笔记</p></div>
+      <nav class="nav">
+        <a href="index.html" class="nav-item" data-page="home"><span class="nav-icon">◉</span><span>学习工作台</span></a>
+        <a href="courses.html" class="nav-item" data-page="courses"><span class="nav-icon">▤</span><span>课程路线</span></a>
+        <a href="kana.html" class="nav-item" data-page="kana"><span class="nav-icon">あ</span><span>假名练习</span></a>
+        <a href="dictionary.html" class="nav-item active" data-page="dictionary"><span class="nav-icon">⌕</span><span>词典</span></a>
+        <a href="review.html" class="nav-item" data-page="review"><span class="nav-icon">↺</span><span>今日复习</span></a>
+        <a href="ai.html" class="nav-item" data-page="ai"><span class="nav-icon">✦</span><span>智能助学</span></a>
+        <a href="progress.html" class="nav-item" data-page="progress"><span class="nav-icon">◷</span><span>学习足迹</span></a>
+      </nav>
+      <div class="sidebar-footer"><p class="footer-text">每一次查词<br>都回到你的学习里</p></div>
+    </aside>
+    <button class="menu-toggle" id="menuToggle" aria-label="菜单"><span></span><span></span><span></span></button>
+    <main class="main"><div class="content dictionary-page">
+      <section class="dictionary-hero" aria-labelledby="dictionaryTitle">
+        <p class="home-eyebrow">KOTOBA DICTIONARY · 课程词典</p>
+        <h2 class="hero-title" id="dictionaryTitle">查到的每个词，<br>都能继续学下去。</h2>
+        <p class="hero-subtitle">词典只使用你当前课程与编辑词表中的单词、短语；收藏后可同步到账号并加入复习。</p>
+        <form id="dictionarySearch" class="dictionary-search" role="search">
+          <label class="sr-only" for="dictionaryQuery">搜索日文、假名或中文释义</label>
+          <input id="dictionaryQuery" name="q" autocomplete="off" placeholder="搜索：私、わたし、我…">
+          <button type="submit" class="btn btn-primary">查词</button>
+        </form>
+      </section>
+      <section class="dictionary-toolbar" aria-label="词典筛选">
+        <div class="dictionary-tabs" role="tablist">
+          <button type="button" class="dictionary-tab is-active" data-dictionary-filter="all">课程词表</button>
+          <button type="button" class="dictionary-tab" data-dictionary-filter="saved">我的收藏 <span id="dictionarySavedCount">0</span></button>
+          <button type="button" class="dictionary-tab" data-dictionary-filter="learning">学习中</button>
+          <button type="button" class="dictionary-tab" data-dictionary-filter="mastered">已掌握</button>
+        </div>
+        <p id="dictionarySummary" class="dictionary-summary" aria-live="polite"></p>
+      </section>
+      <section id="dictionaryResults" class="dictionary-results" aria-live="polite"></section>
+    </div></main>
+  </div>
+  <script src="data/lessons.js"></script>
+  <script src="js/app.js?v=8"></script>
+  <script src="vendor/supabase.js"></script>
+  <script src="js/supabase-config.js"></script>
+  <script src="js/auth.js?v=4"></script>
+  <script src="js/tts.js?v=4"></script>
+  <script src="js/dictionary.js?v=1"></script>
+</body>
+</html>

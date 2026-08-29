@@ -635,7 +635,7 @@
     const current = review.items[item.id] || {};
     const level = correct ? Math.min((current.level == null ? -1 : Number(current.level)) + 1, 4) : 0;
     const due = new Date();
-    due.setDate(due.getDate() + reviewInterval(level));
+    if (!item.dueNow) due.setDate(due.getDate() + reviewInterval(level));
     review.items[item.id] = {
       id: item.id,
       type: item.type || 'lesson',

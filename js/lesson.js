@@ -337,7 +337,7 @@
             '<span class="vt-play btn-play" data-vocab-play="' + i + '" title="朗读读音">🔊</span>' +
             escapeHTML(v.reading || '') +
           '</div>' +
-          '<div class="vt-cell vt-word">' + escapeHTML(v.word || '') + note + '</div>' +
+          '<div class="vt-cell vt-word"><a class="vt-lookup" href="dictionary.html?q=' + encodeURIComponent(v.word || '') + '" title="在词典中查看 ' + escapeHTML(v.word || '') + '">' + escapeHTML(v.word || '') + '</a>' + note + '</div>' +
           '<div class="vt-cell vt-meaning">' + escapeHTML(v.meaning || '') + '</div>' +
         '</div>'
       );
@@ -376,7 +376,7 @@
               '<div class="vt-row">' +
                 '<div class="vt-cell vt-phrase-mark"><span class="phrase-mark">' + mark(i) + '</span></div>' +
                 '<div class="vt-cell vt-reading">' + escapeHTML(p.reading || '') + '</div>' +
-                '<div class="vt-cell vt-word">' + escapeHTML(p.phrase || '') + note + '</div>' +
+                '<div class="vt-cell vt-word"><a class="vt-lookup" href="dictionary.html?q=' + encodeURIComponent(p.phrase || '') + '" title="在词典中查看 ' + escapeHTML(p.phrase || '') + '">' + escapeHTML(p.phrase || '') + '</a>' + note + '</div>' +
                 '<div class="vt-cell vt-meaning">' + escapeHTML(p.meaning || '') + '</div>' +
               '</div>'
             );

@@ -10,7 +10,7 @@
     const items = App.getDueReviewItems(20);
     summary.textContent = items.length
       ? '今天有 ' + items.length + ' 项需要回顾；每次答对后，下一次复习会自动延后。'
-      : '今天没有到期内容。继续完成课程或假名训练，系统会自动生成复习计划。';
+      : '今天没有到期内容。继续完成课程、单词训练或假名练习，系统会自动生成复习计划。';
     if (!items.length) {
       list.innerHTML = '<div class="review-empty"><h3>复习清单已清空</h3><p>去学习一课或做一轮假名练习，薄弱项会自动回到这里。</p><a class="btn btn-primary" href="courses.html">继续学习 →</a></div>';
       return;
@@ -22,7 +22,7 @@
       const text = document.createElement('div');
       const eyebrow = document.createElement('p');
       eyebrow.className = 'review-card__type';
-      eyebrow.textContent = item.type === 'kana' ? '假名复习' : '课程复习';
+      eyebrow.textContent = item.type === 'kana' ? '假名复习' : item.type === 'dictionary' ? '单词复习' : '课程复习';
       const title = document.createElement('h3');
       title.textContent = item.label;
       const detail = document.createElement('p');

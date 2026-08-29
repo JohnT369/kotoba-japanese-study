@@ -11,7 +11,7 @@ const client = path.join(dist, 'client');
 await rm(dist, { recursive: true, force: true });
 await mkdir(client, { recursive: true });
 
-for (const entry of ['index.html', 'courses.html', 'lesson.html', 'kana.html', 'review.html', 'ai.html', 'progress.html', 'login.html', 'css', 'js', 'data']) {
+for (const entry of ['index.html', 'courses.html', 'lesson.html', 'kana.html', 'review.html', 'dictionary.html', 'ai.html', 'progress.html', 'login.html', 'css', 'js', 'data']) {
   await cp(path.join(root, entry), path.join(client, entry), { recursive: true });
 }
 

@@ -116,3 +116,38 @@ test('vocabulary training is generated from the edited lesson source', async () 
   assert.ok(training.recall.every((question) => question.acceptedAnswers.includes(question.answer)));
   assert.ok(training.usage.some((question) => question.template.includes('___')));
 });
+
+test('course dictionary indexes edited words and phrases, then finds Chinese and kana queries', async () => {
+  const source = await readFile('js/dictionary.js', 'utf8');
+  const context = { window: {} };
+  vm.runInNewContext(source, context);
+  const entries = context.window.Dictionary.buildEntries([{
+    id: 'day-001', sequence: 1, title: '第一课',
+    vocabulary: [{ word: '私', reading: 'わたし', meaning: '我', type: '代词' }],
+    phrases: [{ phrase: 'はじめまして', reading: 'はじめまして', meaning: '初次见面' }]
+  }]);
+  assert.equal(entries.length, 2);
+  assert.equal(context.window.Dictionary.searchEntries(entries, '我')[0].term, '私');
+  assert.equal(context.window.Dictionary.searchEntries(entries, 'はじめ')[0].term, 'はじめまして');
+  assert.equal(entries[0].sources[0].lessonId, 'day-001');
+});
+
+test('dictionary stays tied to course content and the synced learning state', async () => {
+  const dictionary = await readFile('js/dictionary.js', 'utf8');
+  const lesson = await readFile('js/lesson.js', 'utf8');
+  const app = await readFile('js/app.js', 'utf8');
+  assert.match(dictionary, /App\.getLessons/);
+  assert.match(dictionary, /App\.getLearningStore/);
+  assert.match(dictionary, /type: 'dictionary'/);
+  assert.match(dictionary, /dueNow: true/);
+  assert.match(lesson, /dictionary\.html\?q=/);
+  assert.match(app, /if \(!item\.dueNow\) due\.setDate/);
+});
+
+test('dictionary page is included in the deployable static site', async () => {
+  const page = await readFile('dictionary.html', 'utf8');
+  const build = await readFile('scripts/build-site.mjs', 'utf8');
+  assert.match(page, /js\/dictionary\.js\?v=1/);
+  assert.match(page, /data-dictionary-filter="saved"/);
+  assert.match(build, /'dictionary\.html'/);
+});
