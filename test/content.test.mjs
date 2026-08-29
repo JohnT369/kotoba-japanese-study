@@ -146,8 +146,10 @@ test('dictionary stays tied to course content and the synced learning state', as
 
 test('dictionary page is included in the deployable static site', async () => {
   const page = await readFile('dictionary.html', 'utf8');
+  const lessonPage = await readFile('lesson.html', 'utf8');
   const build = await readFile('scripts/build-site.mjs', 'utf8');
   assert.match(page, /js\/dictionary\.js\?v=1/);
   assert.match(page, /data-dictionary-filter="saved"/);
+  assert.match(lessonPage, /js\/lesson\.js\?v=8/);
   assert.match(build, /'dictionary\.html'/);
 });
