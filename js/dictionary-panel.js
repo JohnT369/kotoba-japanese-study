@@ -19,12 +19,11 @@
     drawer = document.createElement('div');
     drawer.className = 'dictionary-drawer-shell';
     drawer.hidden = true;
-    drawer.innerHTML = '<button type="button" class="dictionary-drawer__backdrop" aria-label="关闭词典"></button><aside class="dictionary-drawer" role="dialog" aria-modal="true" aria-labelledby="dictionaryDrawerTitle"><div id="dictionaryDrawerBody"></div></aside>';
+    drawer.innerHTML = '<div class="dictionary-drawer__backdrop" aria-hidden="true"></div><aside class="dictionary-drawer" role="dialog" aria-modal="true" aria-labelledby="dictionaryDrawerTitle"><div id="dictionaryDrawerBody"></div></aside>';
     document.body.appendChild(drawer);
     drawer.querySelector('.dictionary-drawer__backdrop').addEventListener('click', close);
     document.addEventListener('keydown', function (event) { if (event.key === 'Escape' && !drawer.hidden) close(); });
     drawer.addEventListener('click', function (event) {
-      if (event.target.closest('[data-drawer-close]')) close();
       if (event.target.closest('[data-drawer-speak]') && active && window.TTS) window.TTS.speak(active.context.term, { lang: 'ja-JP' });
     });
     return drawer;
@@ -55,7 +54,7 @@
             '<p class="dictionary-drawer__source">词典数据：' + escapeHTML(active.remote.attribution || 'Jisho.org / JMdict') + '</p></section>'
           : '<div class="dictionary-drawer__notice">没有找到标准词典条目。你仍可使用本课释义与例句学习。</div>';
     body.innerHTML = '<div class="dictionary-drawer__header"><div><p class="dictionary-drawer__eyebrow">课内词典</p><h2 id="dictionaryDrawerTitle">' + escapeHTML(context.term) + '</h2>' +
-      (context.reading ? '<p class="dictionary-drawer__reading">' + escapeHTML(context.reading) + '</p>' : '') + alternate + '</div><button type="button" class="dictionary-drawer__close" data-drawer-close aria-label="关闭词典">×</button></div>' +
+      (context.reading ? '<p class="dictionary-drawer__reading">' + escapeHTML(context.reading) + '</p>' : '') + alternate + '</div></div>' +
       '<div class="dictionary-drawer__actions"><button type="button" class="btn btn-outline btn-sm" data-drawer-speak>🔊 朗读</button>' +
       '<a class="btn btn-primary btn-sm" href="dictionary.html?q=' + encodeURIComponent(context.term) + '">打开完整词典</a>' +
       (jlpt.length ? '<span class="dictionary-drawer__jlpt">' + jlpt.map(escapeHTML).join(' / ') + '</span>' : '') + '</div>' +

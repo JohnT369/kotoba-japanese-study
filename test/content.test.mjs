@@ -173,12 +173,16 @@ test('dictionary API normalizes a provider entry and returns useful verb forms',
 test('lesson dictionary panel uses the protected same-origin adapter', async () => {
   const panel = await readFile('js/dictionary-panel.js', 'utf8');
   const lesson = await readFile('js/lesson.js', 'utf8');
+  const lessonPage = await readFile('lesson.html', 'utf8');
   const server = await readFile('server.js', 'utf8');
   const config = await readFile('vercel.json', 'utf8');
   assert.match(panel, /fetch\('\/api\/dictionary\?q='/);
   assert.match(panel, /dictionary-drawer/);
+  assert.match(panel, /dictionary-drawer__backdrop.*aria-hidden/);
+  assert.doesNotMatch(panel, /dictionary-drawer__close|data-drawer-close/);
   assert.match(lesson, /data-dictionary-lookup/);
   assert.match(lesson, /DictionaryPanel\.open/);
+  assert.match(lessonPage, /js\/dictionary-panel\.js\?v=2/);
   assert.match(server, /requestPath === '\/api\/dictionary'/);
   assert.match(config, /api\/dictionary\.js/);
 });
