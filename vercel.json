@@ -11,6 +11,9 @@
     },
     "api/tts.js": {
       "maxDuration": 30
+    },
+    "api/dictionary.js": {
+      "maxDuration": 15
     }
   }
 }

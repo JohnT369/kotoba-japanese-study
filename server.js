@@ -5,6 +5,7 @@ const http = require('http');
 const fs = require('fs');
 const path = require('path');
 const aiHandler = require('./api/ai.js');
+const dictionaryHandler = require('./api/dictionary.js');
 const ttsHandler = require('./api/tts.js');
 
 const assetRoot = path.resolve(process.cwd(), 'dist', 'client');
@@ -70,11 +71,20 @@ function handleTts(req, res) {
   });
 }
 
+function handleDictionary(req, res) {
+  prepareFunctionResponse(res);
+  Promise.resolve(dictionaryHandler(req, res)).catch((error) => {
+    console.error('Dictionary handler failed', error);
+    if (!res.writableEnded) send(res, 500, 'Internal Server Error');
+  });
+}
+
 const server = http.createServer((req, res) => {
   const requestPath = new URL(req.url, 'http://localhost').pathname;
   if (requestPath === '/api/ai') {
     return handleAi(req, res);
   }
+  if (requestPath === '/api/dictionary') return handleDictionary(req, res);
   if (requestPath === '/api/tts') return handleTts(req, res);
 
   if (req.method !== 'GET' && req.method !== 'HEAD') {

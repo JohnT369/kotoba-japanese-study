@@ -4,8 +4,10 @@ import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { readFile } from 'node:fs/promises';
 import vm from 'node:vm';
+import { createRequire } from 'node:module';
 
 const exec = promisify(execFile);
+const require = createRequire(import.meta.url);
 
 test('course content passes the authoring contract', async () => {
   const { stdout } = await exec(process.execPath, ['scripts/validate-content.mjs']);
@@ -150,6 +152,33 @@ test('dictionary page is included in the deployable static site', async () => {
   const build = await readFile('scripts/build-site.mjs', 'utf8');
   assert.match(page, /js\/dictionary\.js\?v=1/);
   assert.match(page, /data-dictionary-filter="saved"/);
-  assert.match(lessonPage, /js\/lesson\.js\?v=8/);
+  assert.match(lessonPage, /js\/lesson\.js\?v=9/);
   assert.match(build, /'dictionary\.html'/);
+});
+
+test('dictionary API normalizes a provider entry and returns useful verb forms', () => {
+  const api = require('../api/dictionary.js');
+  const entry = api._test.normalizeEntry({
+    slug: '食べる', is_common: true, jlpt: ['jlpt-n5'],
+    japanese: [{ word: '食べる', reading: 'たべる' }],
+    senses: [{ english_definitions: ['to eat'], parts_of_speech: ['Ichidan verb', 'Transitive verb'], tags: [] }],
+    attribution: { jmdict: true }
+  }, '食べました');
+  assert.equal(entry.word, '食べる');
+  assert.deepEqual(entry.jlpt, ['N5']);
+  assert.ok(entry.forms.includes('食べて'));
+  assert.equal(entry.resolvedFrom, '食べました');
+});
+
+test('lesson dictionary panel uses the protected same-origin adapter', async () => {
+  const panel = await readFile('js/dictionary-panel.js', 'utf8');
+  const lesson = await readFile('js/lesson.js', 'utf8');
+  const server = await readFile('server.js', 'utf8');
+  const config = await readFile('vercel.json', 'utf8');
+  assert.match(panel, /fetch\('\/api\/dictionary\?q='/);
+  assert.match(panel, /dictionary-drawer/);
+  assert.match(lesson, /data-dictionary-lookup/);
+  assert.match(lesson, /DictionaryPanel\.open/);
+  assert.match(server, /requestPath === '\/api\/dictionary'/);
+  assert.match(config, /api\/dictionary\.js/);
 });

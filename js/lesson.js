@@ -337,7 +337,7 @@
             '<span class="vt-play btn-play" data-vocab-play="' + i + '" title="朗读读音">🔊</span>' +
             escapeHTML(v.reading || '') +
           '</div>' +
-          '<div class="vt-cell vt-word"><a class="vt-lookup" href="dictionary.html?q=' + encodeURIComponent(v.word || '') + '" title="在词典中查看 ' + escapeHTML(v.word || '') + '">' + escapeHTML(v.word || '') + '</a>' + note + '</div>' +
+          '<div class="vt-cell vt-word"><a class="vt-lookup" data-dictionary-lookup="vocabulary,' + i + '" href="dictionary.html?q=' + encodeURIComponent(v.word || '') + '" title="在词典中查看 ' + escapeHTML(v.word || '') + '">' + escapeHTML(v.word || '') + '</a>' + note + '</div>' +
           '<div class="vt-cell vt-meaning">' + escapeHTML(v.meaning || '') + '</div>' +
         '</div>'
       );
@@ -376,7 +376,7 @@
               '<div class="vt-row">' +
                 '<div class="vt-cell vt-phrase-mark"><span class="phrase-mark">' + mark(i) + '</span></div>' +
                 '<div class="vt-cell vt-reading">' + escapeHTML(p.reading || '') + '</div>' +
-                '<div class="vt-cell vt-word"><a class="vt-lookup" href="dictionary.html?q=' + encodeURIComponent(p.phrase || '') + '" title="在词典中查看 ' + escapeHTML(p.phrase || '') + '">' + escapeHTML(p.phrase || '') + '</a>' + note + '</div>' +
+                '<div class="vt-cell vt-word"><a class="vt-lookup" data-dictionary-lookup="phrases,' + i + '" href="dictionary.html?q=' + encodeURIComponent(p.phrase || '') + '" title="在词典中查看 ' + escapeHTML(p.phrase || '') + '">' + escapeHTML(p.phrase || '') + '</a>' + note + '</div>' +
                 '<div class="vt-cell vt-meaning">' + escapeHTML(p.meaning || '') + '</div>' +
               '</div>'
             );
@@ -1993,6 +1993,23 @@
     }
   }
 
+  function courseExamplesForTerm(lesson, term) {
+    const results = [];
+    const seen = {};
+    function add(candidate) {
+      if (!candidate || !candidate.jp || String(candidate.jp).indexOf(term) === -1 || seen[candidate.jp]) return;
+      seen[candidate.jp] = true;
+      results.push({ jp: candidate.jp, reading: candidate.reading || '', cn: candidate.cn || '' });
+    }
+    (lesson.examples || []).forEach(add);
+    (lesson.learningGoals || []).forEach(function (goal) {
+      add(goal.mainExample);
+      (goal.examples || []).forEach(add);
+    });
+    ((lesson.dialogue && lesson.dialogue.lines) || []).forEach(add);
+    return results.slice(0, 2);
+  }
+
   /* ============================================================
      阅读模式交互
      ============================================================ */
@@ -2042,6 +2059,25 @@
           card.classList.add('is-speaking');
           setTimeout(function () { card.classList.remove('is-speaking'); }, 700);
         }
+      });
+    });
+
+    // 课内词典抽屉：默认保留链接作为无脚本降级，启用后原地展示标准词典与本课语境。
+    document.querySelectorAll('[data-dictionary-lookup]').forEach(function (link) {
+      link.addEventListener('click', function (event) {
+        if (!window.DictionaryPanel || typeof window.DictionaryPanel.open !== 'function') return;
+        const parts = String(link.getAttribute('data-dictionary-lookup') || '').split(',');
+        const collection = parts[0];
+        const index = Number(parts[1]);
+        const lesson = App.getLessonById(lessonId);
+        const item = lesson && Array.isArray(lesson[collection]) ? lesson[collection][index] : null;
+        const term = item && (item.word || item.phrase);
+        if (!term) return;
+        event.preventDefault();
+        window.DictionaryPanel.open({
+          term: term, reading: item.reading || '', meaning: item.meaning || '', type: item.type || '', note: item.note || '',
+          examples: courseExamplesForTerm(lesson, term)
+        });
       });
     });
 
