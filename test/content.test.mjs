@@ -98,11 +98,11 @@ test('practice CTA uses concise generation copy', async () => {
   assert.doesNotMatch(source, /生成三组练习/);
 });
 
-test('vocabulary training is generated from the edited lesson source', async () => {
+test('vocabulary training deterministically covers the edited word table in four directions', async () => {
   const source = await readFile('js/practice.js', 'utf8');
   const context = { window: {} };
   vm.runInNewContext(source, context);
-  const training = context.window.Practice.buildVocabularyTraining({
+  const lesson = {
     id: 'edited-lesson', title: '编辑后的课时', vocabulary: [
       { word: '私', reading: 'わたし', meaning: '我' },
       { word: '学生', reading: 'がくせい', meaning: '学生' },
@@ -112,11 +112,23 @@ test('vocabulary training is generated from the edited lesson source', async () 
     phrases: [{ phrase: 'はじめまして', reading: 'はじめまして', meaning: '初次见面' }],
     learningGoals: [{ mainExample: { jp: '私は学生です。' }, examples: [] }],
     dialogue: { lines: [] }
-  });
-  assert.equal(training.sourceCount, 5);
-  assert.ok(training.recognition.every((question) => question.options.every((option) => ['我', '学生', '老师', '日本', '初次见面'].includes(option))));
-  assert.ok(training.recall.every((question) => question.acceptedAnswers.includes(question.answer)));
-  assert.ok(training.usage.some((question) => question.template.includes('___')));
+  };
+  const training = context.window.Practice.buildVocabularyTraining(lesson);
+  const secondPass = context.window.Practice.buildVocabularyTraining(lesson);
+  const unrelatedEdit = context.window.Practice.buildVocabularyTraining({ ...lesson, phrases: [], learningGoals: [], dialogue: { lines: [{ jp: 'これは別内容です。' }] } });
+  assert.deepEqual(training, secondPass);
+  assert.deepEqual(training, unrelatedEdit);
+  assert.equal(training.sourceCount, 4);
+  assert.equal(training.jpToCn.length, 4);
+  assert.equal(training.cnToJp.length, 4);
+  assert.equal(training.kanaMatch.length, 4);
+  assert.equal(training.listening.length, 4);
+  assert.ok(training.jpToCn.every((question) => question.placeholder === '输入中文意思'));
+  assert.ok(training.cnToJp.every((question) => question.acceptedAnswers.includes(question.answer)));
+  assert.ok(training.kanaMatch.every((question) => question.options.includes(question.label)));
+  assert.ok(training.listening.every((question) => question.speak && question.options.includes(question.label)));
+  assert.doesNotMatch(context.window.Practice.buildVocabularyTraining.toString(), /AI|callJSON/);
+  assert.doesNotMatch(source, /data-practice-vocabulary-generate/);
 });
 
 test('course dictionary indexes edited words and phrases, then finds Chinese and kana queries', async () => {
@@ -153,6 +165,7 @@ test('dictionary page is included in the deployable static site', async () => {
   assert.match(page, /js\/dictionary\.js\?v=1/);
   assert.match(page, /data-dictionary-filter="saved"/);
   assert.match(lessonPage, /js\/lesson\.js\?v=9/);
+  assert.match(lessonPage, /js\/practice\.js\?v=7/);
   assert.match(build, /'dictionary\.html'/);
 });
 

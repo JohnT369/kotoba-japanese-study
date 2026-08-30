@@ -2999,6 +2999,14 @@ body.is-edit-mode {
   gap: var(--space-7);
 }
 
+.practice-question-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-3);
+}
+
+.practice-question-grid .practice-card { height: 100%; }
+
 .practice-group {
   display: flex;
   flex-direction: column;
@@ -3192,6 +3200,7 @@ body.is-edit-mode {
   .practice-toolbar { align-items: stretch; flex-direction: column; }
   .practice-toolbar__actions > .btn { flex: 1; }
   .practice-options { grid-template-columns: 1fr; }
+  .practice-question-grid { grid-template-columns: 1fr; }
   .practice-card { padding: var(--space-4); }
   .practice-fill-action { align-items: stretch; }
   .practice-fill-action .btn { width: 100%; }
