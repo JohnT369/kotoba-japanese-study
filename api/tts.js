@@ -14,6 +14,8 @@ const JAPANESE_VOICES = new Set([
 const WINDOW_MS = 10 * 60 * 1000;
 const MAX_REQUESTS_PER_WINDOW = 36;
 const requestWindows = new Map();
+const AUDIO_CACHE_LIMIT = 96;
+const audioCache = new Map();
 
 function sendJson(res, status, payload) {
   res.status(status).setHeader('Cache-Control', 'no-store').json(payload);
@@ -64,6 +66,34 @@ async function synthesize(text, voice, rate, pitch, volume) {
   }
 }
 
+function audioCacheKey(text, voice, rate, pitch, volume) {
+  return [text, voice, rate, pitch, volume].join('\u0001');
+}
+
+function getCachedAudio(key) {
+  const audio = audioCache.get(key);
+  if (!audio) return null;
+  // Reinsert so the Map remains a small least-recently-used cache.
+  audioCache.delete(key);
+  audioCache.set(key, audio);
+  return audio;
+}
+
+function cacheAudio(key, audio) {
+  audioCache.set(key, audio);
+  while (audioCache.size > AUDIO_CACHE_LIMIT) audioCache.delete(audioCache.keys().next().value);
+}
+
+function sendAudio(res, audio) {
+  res.status(200);
+  res.setHeader('Content-Type', 'audio/mpeg');
+  res.setHeader('Content-Length', audio.length);
+  // The text and all speech parameters are part of the URL, so this is safe to
+  // cache in both the browser and Vercel CDN. It removes repeated synthesis.
+  res.setHeader('Cache-Control', 'public, max-age=604800, s-maxage=2592000, stale-while-revalidate=604800, immutable');
+  res.end(audio);
+}
+
 module.exports = async function handler(req, res) {
   if (req.method !== 'GET') return sendJson(res, 405, { ok: false, error: '仅支持 GET 请求。' });
   const url = new URL(req.url, 'http://localhost');
@@ -72,21 +102,20 @@ module.exports = async function handler(req, res) {
   const text = String(url.searchParams.get('text') || '').trim();
   if (!text) return sendJson(res, 400, { ok: false, error: '缺少朗读文本。' });
   if (text.length > 600) return sendJson(res, 413, { ok: false, error: '单次朗读最多 600 个字符。' });
-  if (isRateLimited(req)) return sendJson(res, 429, { ok: false, error: '朗读请求过于频繁，请稍后再试。' });
-
   const requestedVoice = String(url.searchParams.get('voice') || 'ja-JP-NanamiNeural');
   const voice = JAPANESE_VOICES.has(requestedVoice) ? requestedVoice : 'ja-JP-NanamiNeural';
   const rate = prosody(url.searchParams.get('rate'), /^(?:default|[+-]\d{1,3}%)$/);
   const pitch = prosody(url.searchParams.get('pitch'), /^(?:default|[+-]\d{1,3}Hz)$/);
   const volume = prosody(url.searchParams.get('volume'), /^(?:default|[+-]\d{1,3}%)$/);
+  const cacheKey = audioCacheKey(text, voice, rate, pitch, volume);
+  const cachedAudio = getCachedAudio(cacheKey);
+  if (cachedAudio) return sendAudio(res, cachedAudio);
+  if (isRateLimited(req)) return sendJson(res, 429, { ok: false, error: '朗读请求过于频繁，请稍后再试。' });
 
   try {
     const audio = await synthesize(text, voice, rate, pitch, volume);
-    res.status(200);
-    res.setHeader('Content-Type', 'audio/mpeg');
-    res.setHeader('Content-Length', audio.length);
-    res.setHeader('Cache-Control', 'private, max-age=300');
-    res.end(audio);
+    cacheAudio(cacheKey, audio);
+    sendAudio(res, audio);
   } catch (error) {
     console.error('Edge TTS synthesis failed', { message: error && error.message });
     sendJson(res, 502, { ok: false, error: 'Edge 朗读服务暂时不可用，请稍后重试。' });

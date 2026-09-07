@@ -123,9 +123,6 @@
   function buildVocabularyTraining(lesson) {
     const entries = vocabularyItems(lesson);
     const sourceHash = getVocabularySourceHash(lesson);
-    const jpToCn = entries.map(function (entry) {
-      return { id: 'jp-to-cn-' + entry.id, label: entry.term, prompt: '看日文，写出中文意思：' + entry.term, answer: entry.meaning, acceptedAnswers: [entry.meaning], placeholder: '输入中文意思', explain: entry.term + (entry.reading ? '（' + entry.reading + '）' : '') + '：' + entry.meaning };
-    });
     const cnToJp = entries.map(function (entry) {
       return { id: 'cn-to-jp-' + entry.id, label: entry.term, prompt: '看中文，写出本课日文：' + entry.meaning, answer: entry.term, acceptedAnswers: [entry.term].concat(entry.reading ? [entry.reading] : []), placeholder: '输入日文或假名', explain: entry.term + (entry.reading ? '（' + entry.reading + '）' : '') + '：' + entry.meaning };
     });
@@ -137,7 +134,7 @@
       const options = buildChoices(entries, entry, 'listening:' + sourceHash + ':' + entry.id);
       return { id: 'listening-' + entry.id, label: entry.term, speak: entry.reading || entry.term, prompt: '先播放读音，再选择你听到的单词。', options: options.map(function (option) { return option.term; }), answerIndex: options.findIndex(function (option) { return option.id === entry.id; }), explain: (entry.reading || entry.term) + '：' + entry.term + '，意思是“' + entry.meaning + '”。' };
     });
-    return { sourceCount: entries.length, jpToCn: jpToCn, cnToJp: cnToJp, kanaMatch: kanaMatch, listening: listening };
+    return { sourceCount: entries.length, cnToJp: cnToJp, kanaMatch: kanaMatch, listening: listening };
   }
 
   function getVocabularyTraining(lesson) {
@@ -147,7 +144,7 @@
 
   function allVocabularyQuestions(training) {
     if (!training) return [];
-    return ['jpToCn', 'cnToJp', 'kanaMatch', 'listening'].reduce(function (all, type) {
+    return ['cnToJp', 'kanaMatch', 'listening'].reduce(function (all, type) {
       return all.concat((training[type] || []).map(function (question, index) { return Object.assign({ type: type, index: index }, question); }));
     }, []);
   }
@@ -284,10 +281,9 @@
 
   function renderVocabularyTraining(training, progress) {
     const groups = [];
-    if (training.jpToCn.length) groups.push('<div class="practice-group"><div class="practice-group__head"><span>类型一 · 日文 → 中文</span><h4>看日文想中文</h4><p>根据当前词表，写出对应中文意思。</p></div><div class="practice-question-grid">' + renderVocabularyFill('jpToCn', training.jpToCn, progress, '日译中') + '</div></div>');
-    if (training.cnToJp.length) groups.push('<div class="practice-group"><div class="practice-group__head"><span>类型二 · 中文 → 日文</span><h4>看中文想日文</h4><p>可输入教材写法或对应假名。</p></div><div class="practice-question-grid">' + renderVocabularyFill('cnToJp', training.cnToJp, progress, '中译日') + '</div></div>');
-    if (training.kanaMatch.length) groups.push('<div class="practice-group"><div class="practice-group__head"><span>类型三 · 假名 ↔ 汉字</span><h4>假名 / 汉字匹配</h4><p>将读音与当前词表中的汉字或外来语对应起来。</p></div><div class="practice-question-grid">' + renderVocabularyChoices('kanaMatch', training.kanaMatch, progress, '假名匹配', false) + '</div></div>');
-    if (training.listening.length) groups.push('<div class="practice-group"><div class="practice-group__head"><span>类型四 · 听音辨词</span><h4>听音辨词</h4><p>播放 Edge 神经语音，再选择你听到的单词。</p></div><div class="practice-question-grid">' + renderVocabularyChoices('listening', training.listening, progress, '听音辨词', true) + '</div></div>');
+    if (training.cnToJp.length) groups.push('<div class="practice-group"><div class="practice-group__head"><span>类型一 · 中文 → 日文</span><h4>看中文想日文</h4><p>可输入教材写法或对应假名。</p></div><div class="practice-question-grid">' + renderVocabularyFill('cnToJp', training.cnToJp, progress, '中译日') + '</div></div>');
+    if (training.kanaMatch.length) groups.push('<div class="practice-group"><div class="practice-group__head"><span>类型二 · 假名 ↔ 汉字</span><h4>假名 / 汉字匹配</h4><p>将读音与当前词表中的汉字或外来语对应起来。</p></div><div class="practice-question-grid">' + renderVocabularyChoices('kanaMatch', training.kanaMatch, progress, '假名匹配', false) + '</div></div>');
+    if (training.listening.length) groups.push('<div class="practice-group"><div class="practice-group__head"><span>类型三 · 听音辨词</span><h4>听音辨词</h4><p>播放 Edge 神经语音，再选择你听到的单词。</p></div><div class="practice-question-grid">' + renderVocabularyChoices('listening', training.listening, progress, '听音辨词', true) + '</div></div>');
     return '<div class="practice-vocabulary-note">训练严格取自当前编辑后的单词表，共 ' + training.sourceCount + ' 个单词；题目和选项顺序固定，不调用 AI。</div><div class="practice-groups">' + groups.join('') + '</div>';
   }
 
@@ -310,7 +306,7 @@
   }
 
   const META = {
-    vocabulary: { eyebrow: '模块一确定性训练', title: '单词四向训练', desc: '日译中、中译日、假名/汉字匹配、听音辨词；严格取自当前编辑后的单词表，不调用 AI。' },
+    vocabulary: { eyebrow: '模块一确定性训练', title: '单词三向训练', desc: '中译日、假名/汉字匹配、听音辨词；严格取自当前编辑后的单词表，不调用 AI。' },
     goals: { eyebrow: '模块二配套练习', title: '学习目标练习', desc: '3 道句型填空；完成后按正确率评估掌握程度。' },
     dialogue: { eyebrow: '模块三配套练习', title: '语音应用会话', desc: '听一句、说一句；由高质量会话模型按本课表达即时反馈。' }
   };
@@ -403,7 +399,17 @@
       if (moduleKey === 'vocabulary') {
         const training = getVocabularyTraining(lesson);
         if (!training) return;
+        if (window.TTS && typeof window.TTS.prefetch === 'function') {
+          window.TTS.prefetch(training.listening.map(function (question) { return question.speak; }).slice(0, 8), { lang: 'ja-JP', rate: 0.86 });
+        }
         root.querySelectorAll('[data-vocabulary-play]').forEach(function (button) {
+          function prefetchQuestion() {
+            const parts = button.getAttribute('data-vocabulary-play').split(',');
+            const question = training[parts[0]] && training[parts[0]][Number(parts[1])];
+            if (question && window.TTS && typeof window.TTS.prefetch === 'function') window.TTS.prefetch([question.speak], { lang: 'ja-JP', rate: 0.86 });
+          }
+          button.addEventListener('pointerenter', prefetchQuestion, { once: true });
+          button.addEventListener('focus', prefetchQuestion, { once: true });
           button.addEventListener('click', function () {
             const parts = button.getAttribute('data-vocabulary-play').split(',');
             const question = training[parts[0]] && training[parts[0]][Number(parts[1])];

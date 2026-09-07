@@ -21,6 +21,10 @@
   const IS_LOCAL = /^(localhost|127\.0\.0\.1)$/i.test(window.location.hostname);
   const EDGE_TTS_PROXY = IS_LOCAL ? 'http://localhost:3001' : window.location.origin;
   const EDGE_TIMEOUT = 5000;
+  const AUDIO_CACHE_NAME = 'kotoba-edge-tts-v1';
+  const EDGE_MEMORY_CACHE_LIMIT = 48;
+  const PREFETCH_LIMIT = 8;
+  const PREFETCH_CONCURRENCY = 2;
 
   let currentEngine = 'auto';
   let currentEdgeVoice = 'ja-JP-NanamiNeural';
@@ -30,6 +34,61 @@
   let isSpeaking = false;
   let cancelRequested = false;
   let lastUtterance = null;
+  const edgeAudioMemory = new Map();
+
+  function edgeAudioUrl(text, opts) {
+    const voice = opts.voice || currentEdgeVoice;
+    return EDGE_TTS_PROXY + '/api/tts?text=' + encodeURIComponent(text) + '&voice=' + encodeURIComponent(voice) + '&rate=' + encodeURIComponent(edgeRate(opts.rate)) + '&pitch=' + encodeURIComponent(edgePitch(opts.pitch)) + '&volume=' + encodeURIComponent(edgeVolume(opts.volume));
+  }
+
+  async function readCachedAudio(url) {
+    if (!('caches' in window)) return null;
+    try {
+      const cache = await window.caches.open(AUDIO_CACHE_NAME);
+      const response = await cache.match(url);
+      return response ? response.blob() : null;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  async function saveCachedAudio(url, response) {
+    if (!('caches' in window)) return;
+    try {
+      const cache = await window.caches.open(AUDIO_CACHE_NAME);
+      await cache.put(url, response.clone());
+    } catch (e) {
+      // CacheStorage is optional; playback continues with the fetched response.
+    }
+  }
+
+  function getEdgeAudioBlob(text, opts) {
+    const url = edgeAudioUrl(text, opts);
+    if (edgeAudioMemory.has(url)) {
+      const cached = edgeAudioMemory.get(url);
+      edgeAudioMemory.delete(url);
+      edgeAudioMemory.set(url, cached);
+      return cached;
+    }
+    const pending = (async function () {
+      const cached = await readCachedAudio(url);
+      if (cached) return cached;
+      const controller = new AbortController();
+      const timeoutId = setTimeout(function () { controller.abort(); }, 30000);
+      try {
+        const response = await fetch(url, { signal: controller.signal, cache: 'force-cache' });
+        if (!response.ok) throw new Error('Edge TTS HTTP ' + response.status);
+        await saveCachedAudio(url, response);
+        return response.blob();
+      } finally {
+        clearTimeout(timeoutId);
+      }
+    })();
+    edgeAudioMemory.set(url, pending);
+    while (edgeAudioMemory.size > EDGE_MEMORY_CACHE_LIMIT) edgeAudioMemory.delete(edgeAudioMemory.keys().next().value);
+    pending.catch(function () { edgeAudioMemory.delete(url); });
+    return pending;
+  }
 
   function isSupported() {
     return true;
@@ -51,23 +110,8 @@
   }
 
   async function speakWithEdge(text, opts) {
-    const voice = opts.voice || currentEdgeVoice;
-    const rate = edgeRate(opts.rate);
-    const pitch = edgePitch(opts.pitch);
-    const volume = edgeVolume(opts.volume);
-
-    const url = `${EDGE_TTS_PROXY}/api/tts?text=${encodeURIComponent(text)}&voice=${voice}&rate=${rate}&pitch=${pitch}&volume=${volume}`;
-
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 30000);
-
     try {
-      const response = await fetch(url, { signal: controller.signal });
-      clearTimeout(timeoutId);
-
-      if (!response.ok) throw new Error('Edge TTS HTTP ' + response.status);
-
-      const audioBlob = await response.blob();
+      const audioBlob = await getEdgeAudioBlob(text, opts);
       const audioUrl = URL.createObjectURL(audioBlob);
 
       if (lastAudio) {
@@ -100,10 +144,31 @@
       audio.play();
       return true;
     } catch (e) {
-      clearTimeout(timeoutId);
       edgeAvailable = false;
       return false;
     }
+  }
+
+  async function prefetch(texts, opts) {
+    if (currentEngine === 'web') return [];
+    opts = opts || {};
+    const seen = new Set();
+    const queue = (Array.isArray(texts) ? texts : [texts]).map(function (text) { return String(text || '').trim(); }).filter(function (text) {
+      if (!text || seen.has(text)) return false;
+      seen.add(text);
+      return true;
+    }).slice(0, PREFETCH_LIMIT);
+    if (!queue.length || !(await checkEdgeTTS())) return [];
+    const results = [];
+    let cursor = 0;
+    async function worker() {
+      while (cursor < queue.length) {
+        const text = queue[cursor++];
+        try { await getEdgeAudioBlob(text, opts); results.push(true); } catch (e) { results.push(false); }
+      }
+    }
+    await Promise.all(Array.from({ length: Math.min(PREFETCH_CONCURRENCY, queue.length) }, worker));
+    return results;
   }
 
   function edgeRate(value) {
@@ -257,6 +322,7 @@
     getEngine: getEngine,
     setVoice: setVoice,
     getVoice: getVoice,
+    prefetch: prefetch,
     isSpeaking: function () { return isSpeaking; },
     EDGE_VOICES: [
       { name: 'ja-JP-NanamiNeural', label: 'Nanami (温柔女声)', gender: 'female' },

@@ -92,6 +92,12 @@
     }
   }
 
+  function prefetchJP(texts) {
+    if (window.TTS && typeof window.TTS.prefetch === 'function') {
+      window.TTS.prefetch(texts, { lang: 'ja-JP' });
+    }
+  }
+
   // 临时高亮某个 token / 按钮
   function flashSpeaking(el, duration) {
     if (!el) return;
@@ -2046,6 +2052,14 @@
 
     // 词汇朗读按钮
     document.querySelectorAll('[data-vocab-play]').forEach(function (btn) {
+      function prefetchVocabularyAudio() {
+        const idx = parseInt(btn.getAttribute('data-vocab-play'), 10);
+        const lesson = App.getLessonById(lessonId);
+        const word = lesson && lesson.vocabulary && lesson.vocabulary[idx] && lesson.vocabulary[idx].word;
+        if (word) prefetchJP([word]);
+      }
+      btn.addEventListener('pointerenter', prefetchVocabularyAudio, { once: true });
+      btn.addEventListener('focus', prefetchVocabularyAudio, { once: true });
       btn.addEventListener('click', function (e) {
         e.stopPropagation();
         const idx = parseInt(btn.getAttribute('data-vocab-play'), 10);
@@ -2244,6 +2258,9 @@
     }
 
     const practiceLesson = App.getLessonById(lessonId);
+    if (practiceLesson && Array.isArray(practiceLesson.vocabulary)) {
+      prefetchJP(practiceLesson.vocabulary.slice(0, 6).map(function (item) { return item && item.word; }).filter(Boolean));
+    }
     if (practiceLesson && window.Practice && typeof window.Practice.bind === 'function') {
       window.Practice.bind(practiceLesson);
     }

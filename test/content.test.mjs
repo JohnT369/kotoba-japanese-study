@@ -24,11 +24,17 @@ test('AI endpoint requires identity and durable quota', async () => {
 test('production speech uses the Edge Neural server proxy', async () => {
   const client = await readFile('js/tts.js', 'utf8');
   const handler = await readFile('api/tts.js', 'utf8');
+  const lesson = await readFile('js/lesson.js', 'utf8');
   assert.match(client, /window\.location\.origin/);
   assert.match(client, /\/api\/tts\?health=1/);
+  assert.match(client, /prefetch/);
+  assert.match(client, /CacheStorage/);
   assert.match(handler, /new EdgeTTS/);
   assert.match(handler, /ja-JP-NanamiNeural/);
   assert.match(handler, /MAX_REQUESTS_PER_WINDOW/);
+  assert.match(handler, /s-maxage/);
+  assert.match(lesson, /function prefetchJP/);
+  assert.match(lesson, /prefetchVocabularyAudio/);
 });
 
 test('lesson completion is connected to the learning page', async () => {
@@ -98,7 +104,7 @@ test('practice CTA uses concise generation copy', async () => {
   assert.doesNotMatch(source, /生成三组练习/);
 });
 
-test('vocabulary training deterministically covers the edited word table in four directions', async () => {
+test('vocabulary training deterministically covers the edited word table in three directions', async () => {
   const source = await readFile('js/practice.js', 'utf8');
   const context = { window: {} };
   vm.runInNewContext(source, context);
@@ -119,15 +125,14 @@ test('vocabulary training deterministically covers the edited word table in four
   assert.deepEqual(training, secondPass);
   assert.deepEqual(training, unrelatedEdit);
   assert.equal(training.sourceCount, 4);
-  assert.equal(training.jpToCn.length, 4);
   assert.equal(training.cnToJp.length, 4);
   assert.equal(training.kanaMatch.length, 4);
   assert.equal(training.listening.length, 4);
-  assert.ok(training.jpToCn.every((question) => question.placeholder === '输入中文意思'));
   assert.ok(training.cnToJp.every((question) => question.acceptedAnswers.includes(question.answer)));
   assert.ok(training.kanaMatch.every((question) => question.options.includes(question.label)));
   assert.ok(training.listening.every((question) => question.speak && question.options.includes(question.label)));
   assert.doesNotMatch(context.window.Practice.buildVocabularyTraining.toString(), /AI|callJSON/);
+  assert.equal(Object.hasOwn(training, 'jpToCn'), false);
   assert.doesNotMatch(source, /data-practice-vocabulary-generate/);
 });
 
@@ -165,7 +170,8 @@ test('dictionary page is included in the deployable static site', async () => {
   assert.match(page, /js\/dictionary\.js\?v=1/);
   assert.match(page, /data-dictionary-filter="saved"/);
   assert.match(lessonPage, /js\/lesson\.js\?v=9/);
-  assert.match(lessonPage, /js\/practice\.js\?v=7/);
+  assert.match(lessonPage, /js\/practice\.js\?v=8/);
+  assert.match(lessonPage, /js\/tts\.js\?v=5/);
   assert.match(build, /'dictionary\.html'/);
 });
 
